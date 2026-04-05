@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.exam.mapper.ExamStudentMapper">
+
+    <select id="selectByExamId" resultType="com.exam.entity.ExamStudent">
+        select id, exam_id, student_id, answer_status, create_time, update_time, deleted
+        from exam_student
+        where deleted = 0
+          and exam_id = #{examId}
+    </select>
+
+    <select id="selectByExamIdAndStudentId" resultType="com.exam.entity.ExamStudent">
+        select id, exam_id, student_id, answer_status, create_time, update_time, deleted
+        from exam_student
+        where deleted = 0
+          and exam_id = #{examId}
+          and student_id = #{studentId}
+        limit 1
+    </select>
+
+    <insert id="batchInsert">
+        insert into exam_student(exam_id, student_id, answer_status, create_time, update_time, deleted)
+        values
+        <foreach collection="list" item="item" separator=",">
+            (#{item.examId}, #{item.studentId}, #{item.answerStatus}, #{item.createTime}, #{item.updateTime}, #{item.deleted})
+        </foreach>
+    </insert>
+
+    <update id="deleteByExamId">
+        update exam_student
+        set deleted = 1,
+            update_time = now()
+        where exam_id = #{examId}
+          and deleted = 0
+    </update>
+
+    <update id="updateAnswerStatus">
+        update exam_student
+        set answer_status = #{answerStatus},
+            update_time = now()
+        where exam_id = #{examId}
+          and student_id = #{studentId}
+          and deleted = 0
+    </update>
+</mapper>

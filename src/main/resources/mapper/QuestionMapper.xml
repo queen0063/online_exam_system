@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.exam.mapper.QuestionMapper">
+
+    <sql id="Base_Column_List">
+        id, subject_id, question_type, title, options_json, answer_json, analysis, score, difficulty, knowledge_point, creator_id, create_time, update_time, deleted
+    </sql>
+
+    <select id="selectById" resultType="com.exam.entity.Question">
+        select <include refid="Base_Column_List"/>
+        from question
+        where id = #{id} and deleted = 0
+    </select>
+
+    <select id="selectPage" resultType="com.exam.entity.Question">
+        <bind name="offset" value="(pageNum - 1) * pageSize"/>
+        select <include refid="Base_Column_List"/>
+        from question
+        where deleted = 0
+        <if test="subjectId != null">
+            and subject_id = #{subjectId}
+        </if>
+        <if test="questionType != null and questionType != ''">
+            and question_type = #{questionType}
+        </if>
+        <if test="difficulty != null and difficulty != ''">
+            and difficulty = #{difficulty}
+        </if>
+        <if test="knowledgePoint != null and knowledgePoint != ''">
+            and knowledge_point like concat('%', #{knowledgePoint}, '%')
+        </if>
+        <if test="keyword != null and keyword != ''">
+            and title like concat('%', #{keyword}, '%')
+        </if>
+        order by id desc
+        limit #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectCount" resultType="long">
+        select count(1)
+        from question
+        where deleted = 0
+        <if test="subjectId != null">
+            and subject_id = #{subjectId}
+        </if>
+        <if test="questionType != null and questionType != ''">
+            and question_type = #{questionType}
+        </if>
+        <if test="difficulty != null and difficulty != ''">
+            and difficulty = #{difficulty}
+        </if>
+        <if test="knowledgePoint != null and knowledgePoint != ''">
+            and knowledge_point like concat('%', #{knowledgePoint}, '%')
+        </if>
+        <if test="keyword != null and keyword != ''">
+            and title like concat('%', #{keyword}, '%')
+        </if>
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        insert into question(subject_id, question_type, title, options_json, answer_json, analysis, score, difficulty, knowledge_point, creator_id, create_time, update_time, deleted)
+        values (#{subjectId}, #{questionType}, #{title}, #{optionsJson}, #{answerJson}, #{analysis}, #{score}, #{difficulty}, #{knowledgePoint}, #{creatorId}, #{createTime}, #{updateTime}, #{deleted})
+    </insert>
+
+    <update id="updateById">
+        update question
+        set subject_id      = #{subjectId},
+            question_type   = #{questionType},
+            title           = #{title},
+            options_json    = #{optionsJson},
+            answer_json     = #{answerJson},
+            analysis        = #{analysis},
+            score           = #{score},
+            difficulty      = #{difficulty},
+            knowledge_point = #{knowledgePoint},
+            creator_id      = #{creatorId},
+            update_time     = #{updateTime}
+        where id = #{id}
+          and deleted = 0
+    </update>
+
+    <update id="logicDeleteById">
+        update question
+        set deleted = 1,
+            update_time = now()
+        where id = #{id}
+    </update>
+
+    <select id="selectByIds" resultType="com.exam.entity.Question">
+        select <include refid="Base_Column_List"/>
+        from question
+        where deleted = 0
+          and id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <select id="selectByRule" resultType="com.exam.entity.Question">
+        select <include refid="Base_Column_List"/>
+        from question
+        where deleted = 0
+          and subject_id = #{subjectId}
+          and question_type = #{questionType}
+          and difficulty = #{difficulty}
+        <if test="knowledgePoint != null and knowledgePoint != ''">
+            and knowledge_point like concat('%', #{knowledgePoint}, '%')
+        </if>
+        order by id asc
+        limit #{limitCount}
+    </select>
+
+    <select id="selectWrongQuestions" resultType="com.exam.entity.Question">
+        select distinct q.<include refid="Base_Column_List"/>
+        from question q
+                 inner join student_answer sa on q.id = sa.question_id and sa.deleted = 0
+        where q.deleted = 0
+          and sa.student_id = #{studentId}
+          and ifnull(sa.correct_flag, 0) = 0
+    </select>
+</mapper>

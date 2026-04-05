@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.exam.mapper.OperationLogMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        insert into operation_log(operator_id, operator_name, operation_type, module_name, operation_desc, request_uri, request_method, request_param, success_flag, operation_time, create_time, update_time, deleted)
+        values (#{operatorId}, #{operatorName}, #{operationType}, #{moduleName}, #{operationDesc}, #{requestUri}, #{requestMethod}, #{requestParam}, #{successFlag}, #{operationTime}, #{createTime}, #{updateTime}, #{deleted})
+    </insert>
+</mapper>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.exam.mapper.LoginLogMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        insert into login_log(user_id, username, success_flag, ip_address, user_agent, message, login_time, create_time, update_time, deleted)
+        values (#{userId}, #{username}, #{successFlag}, #{ipAddress}, #{userAgent}, #{message}, #{loginTime}, #{createTime}, #{updateTime}, #{deleted})
+    </insert>
+</mapper>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.exam.mapper.StudentAnswerMapper">
+
+    <sql id="Base_Column_List">
+        id, exam_id, paper_id, question_id, student_id, answer_content, question_score, actual_score, objective_flag, correct_flag, marking_status, teacher_comment, submit_time, create_time, update_time, deleted
+    </sql>
+
+    <select id="selectByExamIdAndStudentId" resultType="com.exam.entity.StudentAnswer">
+        select <include refid="Base_Column_List"/>
+        from student_answer
+        where deleted = 0
+          and exam_id = #{examId}
+          and student_id = #{studentId}
+        order by id asc
+    </select>
+
+    <select id="selectByExamIdAndStudentIdAndQuestionId" resultType="com.exam.entity.StudentAnswer">
+        select <include refid="Base_Column_List"/>
+        from student_answer
+        where deleted = 0
+          and exam_id = #{examId}
+          and student_id = #{studentId}
+          and question_id = #{questionId}
+        limit 1
+    </select>
+
+    <select id="selectPendingByTeacherId" resultType="com.exam.entity.StudentAnswer">
+        select sa.<include refid="Base_Column_List"/>
+        from student_answer sa
+                 inner join exam e on sa.exam_id = e.id and e.deleted = 0
+        where sa.deleted = 0
+          and sa.marking_status = 'WAIT_MARKING'
+          and e.creator_id = #{teacherId}
+        order by sa.exam_id asc, sa.student_id asc, sa.id asc
+        limit #{offset}, #{pageSize}
+    </select>
+
+    <select id="countPendingByTeacherId" resultType="long">
+        select count(distinct concat(sa.exam_id, '-', sa.student_id))
+        from student_answer sa
+                 inner join exam e on sa.exam_id = e.id and e.deleted = 0
+        where sa.deleted = 0
+          and sa.marking_status = 'WAIT_MARKING'
+          and e.creator_id = #{teacherId}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        insert into student_answer(exam_id, paper_id, question_id, student_id, answer_content, question_score, actual_score, objective_flag, correct_flag, marking_status, teacher_comment, submit_time, create_time, update_time, deleted)
+        values (#{examId}, #{paperId}, #{questionId}, #{studentId}, #{answerContent}, #{questionScore}, #{actualScore}, #{objectiveFlag}, #{correctFlag}, #{markingStatus}, #{teacherComment}, #{submitTime}, #{createTime}, #{updateTime}, #{deleted})
+    </insert>
+
+    <update id="updateById">
+        update student_answer
+        set answer_content = #{answerContent},
+            question_score = #{questionScore},
+            actual_score = #{actualScore},
+            objective_flag = #{objectiveFlag},
+            correct_flag = #{correctFlag},
+            marking_status = #{markingStatus},
+            teacher_comment = #{teacherComment},
+            submit_time = #{submitTime},
+            update_time = #{updateTime}
+        where id = #{id}
+          and deleted = 0
+    </update>
+
+    <update id="deleteByExamIdAndStudentId">
+        update student_answer
+        set deleted = 1,
+            update_time = now()
+        where exam_id = #{examId}
+          and student_id = #{studentId}
+          and deleted = 0
+    </update>
+</mapper>

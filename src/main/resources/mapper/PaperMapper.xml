@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.exam.mapper.PaperMapper">
+
+    <sql id="Base_Column_List">
+        id, paper_name, subject_id, generate_type, total_score, duration_minutes, creator_id, description, create_time, update_time, deleted
+    </sql>
+
+    <select id="selectById" resultType="com.exam.entity.Paper">
+        select <include refid="Base_Column_List"/>
+        from paper
+        where id = #{id} and deleted = 0
+    </select>
+
+    <select id="selectPage" resultType="com.exam.entity.Paper">
+        <bind name="offset" value="(query.pageNum - 1) * query.pageSize"/>
+        select <include refid="Base_Column_List"/>
+        from paper
+        where deleted = 0
+        <if test="query.paperName != null and query.paperName != ''">
+            and paper_name like concat('%', #{query.paperName}, '%')
+        </if>
+        <if test="query.subjectId != null">
+            and subject_id = #{query.subjectId}
+        </if>
+        <if test="!admin">
+            and creator_id = #{creatorId}
+        </if>
+        order by id desc
+        limit #{offset}, #{query.pageSize}
+    </select>
+
+    <select id="selectCount" resultType="long">
+        select count(1)
+        from paper
+        where deleted = 0
+        <if test="query.paperName != null and query.paperName != ''">
+            and paper_name like concat('%', #{query.paperName}, '%')
+        </if>
+        <if test="query.subjectId != null">
+            and subject_id = #{query.subjectId}
+        </if>
+        <if test="!admin">
+            and creator_id = #{creatorId}
+        </if>
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        insert into paper(paper_name, subject_id, generate_type, total_score, duration_minutes, creator_id, description, create_time, update_time, deleted)
+        values (#{paperName}, #{subjectId}, #{generateType}, #{totalScore}, #{durationMinutes}, #{creatorId}, #{description}, #{createTime}, #{updateTime}, #{deleted})
+    </insert>
+
+    <update id="updateById">
+        update paper
+        set paper_name = #{paperName},
+            subject_id = #{subjectId},
+            generate_type = #{generateType},
+            total_score = #{totalScore},
+            duration_minutes = #{durationMinutes},
+            creator_id = #{creatorId},
+            description = #{description},
+            update_time = #{updateTime}
+        where id = #{id}
+          and deleted = 0
+    </update>
+
+    <update id="logicDeleteById">
+        update paper
+        set deleted = 1,
+            update_time = now()
+        where id = #{id}
+    </update>
+</mapper>

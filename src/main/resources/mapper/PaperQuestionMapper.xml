@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.exam.mapper.PaperQuestionMapper">
+
+    <select id="selectByPaperId" resultType="com.exam.entity.PaperQuestion">
+        select id, paper_id, question_id, question_score, sort_no, create_time, update_time, deleted
+        from paper_question
+        where deleted = 0
+          and paper_id = #{paperId}
+        order by sort_no asc
+    </select>
+
+    <insert id="batchInsert">
+        insert into paper_question(paper_id, question_id, question_score, sort_no, create_time, update_time, deleted)
+        values
+        <foreach collection="list" item="item" separator=",">
+            (#{item.paperId}, #{item.questionId}, #{item.questionScore}, #{item.sortNo}, #{item.createTime}, #{item.updateTime}, #{item.deleted})
+        </foreach>
+    </insert>
+
+    <update id="deleteByPaperId">
+        update paper_question
+        set deleted = 1,
+            update_time = now()
+        where paper_id = #{paperId}
+          and deleted = 0
+    </update>
+</mapper>

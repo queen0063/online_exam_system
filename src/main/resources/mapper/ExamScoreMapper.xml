@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.exam.mapper.ExamScoreMapper">
+
+    <sql id="Base_Column_List">
+        id, exam_id, student_id, objective_score, subjective_score, total_score, pass_flag, excellent_flag, rank_no, score_status, submit_time, publish_time, create_time, update_time, deleted
+    </sql>
+
+    <select id="selectByExamIdAndStudentId" resultType="com.exam.entity.ExamScore">
+        select <include refid="Base_Column_List"/>
+        from exam_score
+        where deleted = 0
+          and exam_id = #{examId}
+          and student_id = #{studentId}
+        limit 1
+    </select>
+
+    <select id="selectScorePage" resultType="com.exam.vo.score.ScoreVO">
+        <bind name="offset" value="(query.pageNum - 1) * query.pageSize"/>
+        select es.id,
+               es.exam_id,
+               e.exam_name,
+               es.student_id,
+               u.real_name as student_name,
+               es.objective_score,
+               es.subjective_score,
+               es.total_score,
+               es.pass_flag,
+               es.excellent_flag,
+               es.rank_no,
+               es.score_status,
+               es.publish_time
+        from exam_score es
+                 inner join exam e on es.exam_id = e.id and e.deleted = 0
+                 inner join sys_user u on es.student_id = u.id and u.deleted = 0
+        where es.deleted = 0
+        <if test="query.examId != null">
+            and es.exam_id = #{query.examId}
+        </if>
+        <if test="query.keyword != null and query.keyword != ''">
+            and (u.real_name like concat('%', #{query.keyword}, '%') or u.username like concat('%', #{query.keyword}, '%'))
+        </if>
+        <if test="!admin">
+            and e.creator_id = #{teacherId}
+        </if>
+        order by es.total_score desc, es.id asc
+        limit #{offset}, #{query.pageSize}
+    </select>
+
+    <select id="selectScoreCount" resultType="long">
+        select count(1)
+        from exam_score es
+                 inner join exam e on es.exam_id = e.id and e.deleted = 0
+                 inner join sys_user u on es.student_id = u.id and u.deleted = 0
+        where es.deleted = 0
+        <if test="query.examId != null">
+            and es.exam_id = #{query.examId}
+        </if>
+        <if test="query.keyword != null and query.keyword != ''">
+            and (u.real_name like concat('%', #{query.keyword}, '%') or u.username like concat('%', #{query.keyword}, '%'))
+        </if>
+        <if test="!admin">
+            and e.creator_id = #{teacherId}
+        </if>
+    </select>
+
+    <select id="selectMyScorePage" resultType="com.exam.vo.score.ScoreVO">
+        <bind name="offset" value="(query.pageNum - 1) * query.pageSize"/>
+        select es.id,
+               es.exam_id,
+               e.exam_name,
+               es.student_id,
+               u.real_name as student_name,
+               es.objective_score,
+               es.subjective_score,
+               es.total_score,
+               es.pass_flag,
+               es.excellent_flag,
+               es.rank_no,
+               es.score_status,
+               es.publish_time
+        from exam_score es
+                 inner join exam e on es.exam_id = e.id and e.deleted = 0
+                 inner join sys_user u on es.student_id = u.id and u.deleted = 0
+        where es.deleted = 0
+          and es.student_id = #{studentId}
+        <if test="query.examId != null">
+            and es.exam_id = #{query.examId}
+        </if>
+        order by es.id desc
+        limit #{offset}, #{query.pageSize}
+    </select>
+
+    <select id="selectMyScoreCount" resultType="long">
+        select count(1)
+        from exam_score
+        where deleted = 0
+          and student_id = #{studentId}
+        <if test="query.examId != null">
+            and exam_id = #{query.examId}
+        </if>
+    </select>
+
+    <select id="selectSegmentStatistics" resultType="com.exam.vo.score.ScoreSegmentVO">
+        select segment_name, count
+        from (
+                 select '0-59' as segment_name, count(1) as count from exam_score where deleted = 0 and exam_id = #{examId} and total_score &lt; 60
+                 union all
+                 select '60-69' as segment_name, count(1) as count from exam_score where deleted = 0 and exam_id = #{examId} and total_score between 60 and 69
+                 union all
+                 select '70-79' as segment_name, count(1) as count from exam_score where deleted = 0 and exam_id = #{examId} and total_score between 70 and 79
+                 union all
+                 select '80-89' as segment_name, count(1) as count from exam_score where deleted = 0 and exam_id = #{examId} and total_score between 80 and 89
+                 union all
+                 select '90-100' as segment_name, count(1) as count from exam_score where deleted = 0 and exam_id = #{examId} and total_score between 90 and 100
+             ) t
+    </select>
+
+    <select id="selectPassCount" resultType="int">
+        select count(1) from exam_score where deleted = 0 and exam_id = #{examId} and pass_flag = 1
+    </select>
+
+    <select id="selectExcellentCount" resultType="int">
+        select count(1) from exam_score where deleted = 0 and exam_id = #{examId} and excellent_flag = 1
+    </select>
+
+    <select id="selectTotalCount" resultType="int">
+        select count(1) from exam_score where deleted = 0 and exam_id = #{examId}
+    </select>
+
+    <select id="selectRanking" resultType="com.exam.vo.score.ScoreVO">
+        select es.id,
+               es.exam_id,
+               e.exam_name,
+               es.student_id,
+               u.real_name as student_name,
+               es.objective_score,
+               es.subjective_score,
+               es.total_score,
+               es.pass_flag,
+               es.excellent_flag,
+               es.rank_no,
+               es.score_status,
+               es.publish_time
+        from exam_score es
+                 inner join exam e on es.exam_id = e.id and e.deleted = 0
+                 inner join sys_user u on es.student_id = u.id and u.deleted = 0
+        where es.deleted = 0 and es.exam_id = #{examId}
+        order by es.rank_no asc, es.total_score desc
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        insert into exam_score(exam_id, student_id, objective_score, subjective_score, total_score, pass_flag, excellent_flag, rank_no, score_status, submit_time, publish_time, create_time, update_time, deleted)
+        values (#{examId}, #{studentId}, #{objectiveScore}, #{subjectiveScore}, #{totalScore}, #{passFlag}, #{excellentFlag}, #{rankNo}, #{scoreStatus}, #{submitTime}, #{publishTime}, #{createTime}, #{updateTime}, #{deleted})
+    </insert>
+
+    <update id="updateById">
+        update exam_score
+        set objective_score = #{objectiveScore},
+            subjective_score = #{subjectiveScore},
+            total_score = #{totalScore},
+            pass_flag = #{passFlag},
+            excellent_flag = #{excellentFlag},
+            rank_no = #{rankNo},
+            score_status = #{scoreStatus},
+            submit_time = #{submitTime},
+            publish_time = #{publishTime},
+            update_time = #{updateTime}
+        where id = #{id}
+          and deleted = 0
+    </update>
+
+    <update id="updateRankByExamId">
+        update exam_score es
+            inner join (
+            select id,
+                   dense_rank() over (order by total_score desc, submit_time asc, id asc) as rank_no
+            from exam_score
+            where deleted = 0 and exam_id = #{examId}
+        ) t on es.id = t.id
+        set es.rank_no = t.rank_no,
+            es.update_time = now()
+        where es.exam_id = #{examId}
+    </update>
+</mapper>
