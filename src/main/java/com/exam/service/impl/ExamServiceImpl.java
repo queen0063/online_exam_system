@@ -62,7 +62,11 @@ public class ExamServiceImpl implements ExamService {
 
     @Override
     public ExamVO detail(Long id) {
-        return toVO(getExam(id));
+        Exam exam = getExam(id);
+        List<Long> studentIds = examStudentMapper.selectByExamId(id).stream()
+                .map(ExamStudent::getStudentId)
+                .toList();
+        return toVO(exam, studentIds);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -167,6 +171,10 @@ public class ExamServiceImpl implements ExamService {
     }
 
     private ExamVO toVO(Exam exam) {
+        return toVO(exam, List.of());
+    }
+
+    private ExamVO toVO(Exam exam, List<Long> studentIds) {
         return ExamVO.builder()
                 .id(exam.getId())
                 .examName(exam.getExamName())
@@ -179,6 +187,7 @@ public class ExamServiceImpl implements ExamService {
                 .passScore(exam.getPassScore())
                 .status(exam.getStatus())
                 .resultPublished(exam.getResultPublished())
+                .studentIds(studentIds)
                 .build();
     }
 }

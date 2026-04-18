@@ -55,8 +55,8 @@
       />
     </div>
 
-    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑考试' : '新增考试'" width="720px">
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="96px">
+    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑考试' : '新增考试'" width="720px" @closed="resetFormState">
+      <el-form ref="formRef" v-loading="dialogLoading" :model="form" :rules="rules" label-width="96px">
         <el-form-item label="考试名称" prop="examName">
           <el-input v-model="form.examName" placeholder="请输入考试名称" />
         </el-form-item>
@@ -115,7 +115,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 
-import { deleteExamApi, getExamPageApi, publishExamApi, publishExamScoreApi, saveExamApi } from '@/api/modules/exam'
+import { deleteExamApi, getExamDetailApi, getExamPageApi, publishExamApi, publishExamScoreApi, saveExamApi } from '@/api/modules/exam'
 import { getPaperPageApi } from '@/api/modules/paper'
 import PageContainer from '@/components/common/PageContainer.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
@@ -133,6 +133,7 @@ const statusMap = EXAM_STATUS_OPTIONS.reduce<Record<string, string>>((map, item)
 }, {})
 
 const loading = ref(false)
+const dialogLoading = ref(false)
 const submitLoading = ref(false)
 const dialogVisible = ref(false)
 const detailVisible = ref(false)
@@ -204,9 +205,29 @@ function resetQuery() {
   loadData()
 }
 
-function openDialog(row?: ExamRecord) {
-  Object.assign(form, initialForm(), row || {})
+function resetFormState() {
+  Object.assign(form, initialForm())
+}
+
+async function openDialog(row?: ExamRecord) {
+  if (!row?.id) {
+    resetFormState()
+    dialogVisible.value = true
+    return
+  }
+
   dialogVisible.value = true
+  dialogLoading.value = true
+  try {
+    const result = await getExamDetailApi(Number(row.id))
+    Object.assign(form, initialForm(), result.data, {
+      startTime: formatDateTime(result.data.startTime),
+      endTime: formatDateTime(result.data.endTime),
+      studentIds: result.data.studentIds || []
+    })
+  } finally {
+    dialogLoading.value = false
+  }
 }
 
 function showDetail(row: ExamRecord) {

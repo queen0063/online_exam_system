@@ -24,5 +24,6 @@ public class ExamVO {
     private Integer passScore;
     private String status;
     private Integer resultPublished;
+    private List<Long> studentIds;
     private List<AnswerVO> questions;
 }

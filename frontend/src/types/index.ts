@@ -112,6 +112,7 @@ export interface ExamRecord {
   passScore: number
   status: string
   resultPublished?: number
+  studentIds?: number[]
 }
 
 export interface AnswerRecord {
