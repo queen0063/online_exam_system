@@ -31,7 +31,7 @@ export const staticRoutes: AppRouteRecordRaw[] = [
   },
   {
     path: '/',
-    redirect: '/dashboard'
+    redirect: '/login'
   }
 ]
 

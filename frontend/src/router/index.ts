@@ -5,6 +5,8 @@ import { useTabsStore } from '@/stores/tabs'
 import { useUserStore } from '@/stores/user'
 import { staticRoutes, notFoundRoute } from './routes'
 
+const DEFAULT_AUTHED_PATH = '/dashboard'
+
 const router = createRouter({
   history: createWebHistory(),
   routes: staticRoutes as RouteRecordRaw[],
@@ -12,18 +14,7 @@ const router = createRouter({
 })
 
 let routesInjected = false
-const injectedRouteNames = new Set<string>()
-
-function collectRouteNames(routes: RouteRecordRaw[]) {
-  routes.forEach((route) => {
-    if (route.name) {
-      injectedRouteNames.add(String(route.name))
-    }
-    if (route.children?.length) {
-      collectRouteNames(route.children)
-    }
-  })
-}
+let removeInjectedRoutes: Array<() => void> = []
 
 router.beforeEach(async (to, _from, next) => {
   const userStore = useUserStore()
@@ -32,7 +23,7 @@ router.beforeEach(async (to, _from, next) => {
   document.title = `${to.meta.title || '在线考试系统'} - 在线考试系统`
 
   if (hasToken && to.path === '/login') {
-    next({ path: '/' })
+    next({ path: DEFAULT_AUTHED_PATH, replace: true })
     return
   }
 
@@ -51,13 +42,14 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   if (hasToken && !routesInjected) {
+    resetRouter()
     const routes = userStore.buildRoutes()
-    routes.forEach((route) => router.addRoute(route))
-    collectRouteNames(routes)
-    router.addRoute(notFoundRoute as RouteRecordRaw)
-    injectedRouteNames.add('404-fallback')
+    routes.forEach((route) => {
+      removeInjectedRoutes.push(router.addRoute(route))
+    })
+    removeInjectedRoutes.push(router.addRoute(notFoundRoute as RouteRecordRaw))
     routesInjected = true
-    next({ ...to, replace: true })
+    next(to.path === '/' ? { path: DEFAULT_AUTHED_PATH, replace: true } : { ...to, replace: true })
     return
   }
 
@@ -78,12 +70,8 @@ router.beforeEach(async (to, _from, next) => {
 })
 
 export function resetRouter() {
-  injectedRouteNames.forEach((name) => {
-    if (name !== '404-fallback' && router.hasRoute(name)) {
-      router.removeRoute(name)
-    }
-  })
-  injectedRouteNames.clear()
+  removeInjectedRoutes.reverse().forEach((removeRoute) => removeRoute())
+  removeInjectedRoutes = []
   routesInjected = false
 }
 

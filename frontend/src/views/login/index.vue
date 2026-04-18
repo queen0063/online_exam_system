@@ -45,6 +45,8 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 import { useUserStore } from '@/stores/user'
 
+const DEFAULT_AUTHED_PATH = '/dashboard'
+
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
@@ -72,7 +74,7 @@ async function handleLogin() {
     await userStore.loginAction(form)
     ElMessage.success('登录成功')
     const redirect = (route.query.redirect as string) || '/'
-    await router.replace(redirect)
+    await router.replace(redirect === '/' ? DEFAULT_AUTHED_PATH : redirect)
   } catch {
     // 请求层已统一弹出后端返回的真实错误信息，这里不再覆盖提示。
   } finally {
