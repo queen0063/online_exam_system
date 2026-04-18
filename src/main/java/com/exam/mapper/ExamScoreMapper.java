@@ -2,6 +2,7 @@ package com.exam.mapper;
 
 import com.exam.dto.score.ScoreQueryDTO;
 import com.exam.entity.ExamScore;
+import com.exam.vo.marking.MarkingVO;
 import com.exam.vo.score.ScoreSegmentVO;
 import com.exam.vo.score.ScoreVO;
 import java.util.List;
@@ -12,6 +13,10 @@ import org.apache.ibatis.annotations.Param;
 public interface ExamScoreMapper {
 
     ExamScore selectByExamIdAndStudentId(@Param("examId") Long examId, @Param("studentId") Long studentId);
+
+    List<MarkingVO> selectPendingMarkingPage(@Param("teacherId") Long teacherId, @Param("offset") Integer offset, @Param("pageSize") Integer pageSize, @Param("admin") boolean admin);
+
+    Long countPendingMarking(@Param("teacherId") Long teacherId, @Param("admin") boolean admin);
 
     List<ScoreVO> selectScorePage(@Param("query") ScoreQueryDTO queryDTO, @Param("teacherId") Long teacherId, @Param("admin") boolean admin);
 

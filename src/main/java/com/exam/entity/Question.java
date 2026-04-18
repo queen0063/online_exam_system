@@ -1,5 +1,6 @@
 package com.exam.entity;
 
+import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -20,4 +21,8 @@ public class Question extends BaseEntity {
     private String difficulty;
     private String knowledgePoint;
     private Long creatorId;
+    private String studentAnswerContent;
+    private Integer questionScore;
+    private Integer actualScore;
+    private LocalDateTime submitTime;
 }

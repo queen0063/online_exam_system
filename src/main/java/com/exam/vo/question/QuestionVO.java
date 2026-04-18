@@ -20,8 +20,12 @@ public class QuestionVO {
     private List<String> answers;
     private String analysis;
     private Integer score;
+    private List<String> studentAnswers;
+    private Integer questionScore;
+    private Integer actualScore;
     private String difficulty;
     private String knowledgePoint;
     private Long creatorId;
     private LocalDateTime createTime;
+    private LocalDateTime submitTime;
 }

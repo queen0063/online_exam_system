@@ -10,14 +10,23 @@
 
     <div class="page-grid">
       <div v-for="(item, index) in detail?.answers || []" :key="item.id" class="app-card answer-card">
-        <question-renderer :question="{ ...item, answers: item.standardAnswers }" :index="index" :show-analysis="true" :model-value="item.studentAnswers || []" />
+        <question-renderer
+          :question="{ ...item, answers: item.standardAnswers }"
+          :index="index"
+          :show-analysis="true"
+          :model-value="item.studentAnswers || []"
+          readonly
+        />
         <div class="answer-card__footer">
           <div class="answer-card__score">
             <span>当前得分</span>
-            <el-input-number v-model="scoreMap[item.id]" :min="0" :max="item.questionScore" />
+            <el-input-number v-model="scoreMap[item.id]" :min="0" :max="item.questionScore" :disabled="!canMark(item)" />
           </div>
-          <el-input v-model="commentMap[item.id]" type="textarea" :rows="2" placeholder="请输入教师评语" />
-          <el-button type="primary" @click="handleMark(item.id)">保存评分</el-button>
+          <el-input v-model="commentMap[item.id]" type="textarea" :rows="2" placeholder="请输入教师评语" :disabled="!canMark(item)" />
+          <div class="answer-card__actions">
+            <el-tag v-if="!canMark(item)" type="info">客观题已自动判分</el-tag>
+            <el-button v-else type="primary" @click="handleMark(item.id)">保存评分</el-button>
+          </div>
         </div>
       </div>
     </div>
@@ -37,7 +46,7 @@ import { ElMessage } from 'element-plus'
 import { finishMarkingApi, getMarkingDetailApi, markQuestionApi } from '@/api/modules/marking'
 import PageContainer from '@/components/common/PageContainer.vue'
 import QuestionRenderer from '@/components/common/QuestionRenderer.vue'
-import type { MarkingRecord } from '@/types'
+import type { AnswerRecord, MarkingRecord } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -60,6 +69,10 @@ async function handleMark(answerId: number) {
     teacherComment: commentMap[answerId]
   })
   ElMessage.success('单题评分已保存')
+}
+
+function canMark(item: AnswerRecord) {
+  return item.questionType === 'SHORT_ANSWER'
 }
 
 async function handleFinish() {
@@ -92,6 +105,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.answer-card__actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .footer-bar {

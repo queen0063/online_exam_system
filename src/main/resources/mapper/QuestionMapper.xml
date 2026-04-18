@@ -113,11 +113,61 @@
     </select>
 
     <select id="selectWrongQuestions" resultType="com.exam.entity.Question">
-        select distinct q.<include refid="Base_Column_List"/>
+        select
+            q.id,
+            q.subject_id,
+            q.question_type,
+            q.title,
+            q.options_json,
+            q.answer_json,
+            q.analysis,
+            q.score,
+            q.difficulty,
+            q.knowledge_point,
+            q.creator_id,
+            q.create_time,
+            q.update_time,
+            q.deleted,
+            sa.answer_content as student_answer_content,
+            sa.question_score,
+            sa.actual_score,
+            sa.submit_time
         from question q
                  inner join student_answer sa on q.id = sa.question_id and sa.deleted = 0
         where q.deleted = 0
           and sa.student_id = #{studentId}
-          and ifnull(sa.correct_flag, 0) = 0
+          and (
+            (ifnull(sa.objective_flag, 0) = 1 and ifnull(sa.correct_flag, 0) = 0)
+            or (
+                ifnull(sa.objective_flag, 0) = 0
+                and sa.marking_status = 'MARKED'
+                and ifnull(sa.actual_score, 0) &lt; ifnull(sa.question_score, 0)
+            )
+          )
+          and not exists (
+            select 1
+            from student_answer latest_sa
+            where latest_sa.deleted = 0
+              and latest_sa.student_id = sa.student_id
+              and latest_sa.question_id = sa.question_id
+              and (
+                (ifnull(latest_sa.objective_flag, 0) = 1 and ifnull(latest_sa.correct_flag, 0) = 0)
+                or (
+                    ifnull(latest_sa.objective_flag, 0) = 0
+                    and latest_sa.marking_status = 'MARKED'
+                    and ifnull(latest_sa.actual_score, 0) &lt; ifnull(latest_sa.question_score, 0)
+                )
+              )
+              and (
+                coalesce(latest_sa.submit_time, latest_sa.update_time, latest_sa.create_time)
+                    &gt; coalesce(sa.submit_time, sa.update_time, sa.create_time)
+                or (
+                    coalesce(latest_sa.submit_time, latest_sa.update_time, latest_sa.create_time)
+                        = coalesce(sa.submit_time, sa.update_time, sa.create_time)
+                    and latest_sa.id &gt; sa.id
+                )
+              )
+          )
+        order by coalesce(sa.submit_time, sa.update_time, sa.create_time) desc, q.id desc
     </select>
 </mapper>

@@ -17,6 +17,38 @@
         limit 1
     </select>
 
+    <select id="selectPendingMarkingPage" resultType="com.exam.vo.marking.MarkingVO">
+        select es.exam_id,
+               e.exam_name,
+               es.student_id,
+               u.real_name as student_name,
+               es.objective_score,
+               es.subjective_score,
+               es.total_score,
+               es.score_status
+        from exam_score es
+                 inner join exam e on es.exam_id = e.id and e.deleted = 0
+                 inner join sys_user u on es.student_id = u.id and u.deleted = 0
+        where es.deleted = 0
+          and es.score_status = 'WAIT_MARKING'
+        <if test="!admin">
+            and e.creator_id = #{teacherId}
+        </if>
+        order by es.submit_time asc, es.id asc
+        limit #{offset}, #{pageSize}
+    </select>
+
+    <select id="countPendingMarking" resultType="long">
+        select count(1)
+        from exam_score es
+                 inner join exam e on es.exam_id = e.id and e.deleted = 0
+        where es.deleted = 0
+          and es.score_status = 'WAIT_MARKING'
+        <if test="!admin">
+            and e.creator_id = #{teacherId}
+        </if>
+    </select>
+
     <select id="selectScorePage" resultType="com.exam.vo.score.ScoreVO">
         <bind name="offset" value="(query.pageNum - 1) * query.pageSize"/>
         select es.id,

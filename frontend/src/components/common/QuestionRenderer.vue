@@ -7,26 +7,26 @@
     </div>
 
     <div v-if="question.questionType === 'SINGLE_CHOICE'" class="question-renderer__body">
-      <el-radio-group :model-value="singleValue" @update:model-value="onSingleChange">
+      <el-radio-group :model-value="singleValue" :disabled="readonly" @update:model-value="onSingleChange">
         <el-radio v-for="option in question.options || []" :key="option" :label="option">{{ option }}</el-radio>
       </el-radio-group>
     </div>
 
     <div v-else-if="question.questionType === 'MULTIPLE_CHOICE'" class="question-renderer__body">
-      <el-checkbox-group :model-value="modelValue" @change="onMultipleChange">
+      <el-checkbox-group :model-value="modelValue" :disabled="readonly" @change="onMultipleChange">
         <el-checkbox v-for="option in question.options || []" :key="option" :label="option">{{ option }}</el-checkbox>
       </el-checkbox-group>
     </div>
 
     <div v-else-if="question.questionType === 'TRUE_FALSE'" class="question-renderer__body">
-      <el-radio-group :model-value="singleValue" @update:model-value="onSingleChange">
+      <el-radio-group :model-value="singleValue" :disabled="readonly" @update:model-value="onSingleChange">
         <el-radio label="true">正确</el-radio>
         <el-radio label="false">错误</el-radio>
       </el-radio-group>
     </div>
 
     <div v-else-if="question.questionType === 'FILL_BLANK'" class="question-renderer__body">
-      <el-input :model-value="singleValue" placeholder="请输入答案" @input="onInputChange" />
+      <el-input :model-value="singleValue" :readonly="readonly" placeholder="请输入答案" @input="onInputChange" />
     </div>
 
     <div v-else class="question-renderer__body">
@@ -34,12 +34,15 @@
         :model-value="singleValue"
         type="textarea"
         :rows="6"
+        :readonly="readonly"
         placeholder="请输入作答内容"
         @input="onInputChange"
       />
     </div>
 
     <div v-if="showAnalysis" class="question-renderer__analysis">
+      <p v-if="showStudentAnswer"><strong>我的作答：</strong>{{ displayStudentAnswers }}</p>
+      <p v-if="showScore"><strong>作答得分：</strong>{{ question.actualScore ?? 0 }}/{{ question.questionScore || question.score || 0 }}</p>
       <p><strong>参考答案：</strong>{{ (question.standardAnswers || question.answers || []).join('；') || '-' }}</p>
       <p><strong>题目解析：</strong>{{ question.analysis || '-' }}</p>
     </div>
@@ -57,6 +60,7 @@ const props = defineProps<{
   modelValue?: string[]
   index: number
   showAnalysis?: boolean
+  readonly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -68,6 +72,14 @@ const typeLabel = computed(
 )
 
 const singleValue = computed(() => props.modelValue?.[0] || '')
+const displayStudentAnswers = computed(() => (props.modelValue || []).join('；') || '未作答')
+const showStudentAnswer = computed(
+  () =>
+    props.question.studentAnswers !== undefined ||
+    props.question.actualScore !== undefined ||
+    (props.modelValue?.length ?? 0) > 0
+)
+const showScore = computed(() => props.question.actualScore !== undefined && props.question.actualScore !== null)
 
 function onSingleChange(value: string | number | boolean) {
   emit('update:modelValue', [String(value)])

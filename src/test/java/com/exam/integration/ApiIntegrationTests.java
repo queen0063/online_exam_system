@@ -19,6 +19,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -219,6 +220,264 @@ class ApiIntegrationTests {
                 .andExpect(jsonPath("$.message").value("试卷已提交，不能再次参加考试"));
     }
 
+    @Test
+    void teacherShouldSeeSubmittedPaperInPendingMarkingList() throws Exception {
+        String teacherToken = loginAndGetToken("teacher", "Admin@123");
+        String examName = "待阅卷列表回归验证";
+        mockMvc.perform(post("/exams")
+                        .header("Authorization", "Bearer " + teacherToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "examName": "%s",
+                                  "paperId": 1,
+                                  "subjectId": 1,
+                                  "startTime": "2026-04-18 14:00:00",
+                                  "endTime": "2026-04-19 14:00:00",
+                                  "durationMinutes": 60,
+                                  "passScore": 24,
+                                  "studentIds": [3]
+                                }
+                                """.formatted(examName)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        String studentToken = loginAndGetToken("student", "Admin@123");
+        Long examId = findStudentExamIdByName(studentToken, examName);
+
+        mockMvc.perform(post("/answers/exams/" + examId + "/start")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(post("/answers/exams/" + examId + "/submit")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        MvcResult pendingResult = mockMvc.perform(get("/marking/pending")
+                        .header("Authorization", "Bearer " + teacherToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.records.length()").value(greaterThanOrEqualTo(1)))
+                .andReturn();
+
+        JsonNode root = objectMapper.readTree(pendingResult.getResponse().getContentAsString());
+        boolean matched = false;
+        for (JsonNode item : root.path("data").path("records")) {
+            if (examId.equals(item.path("examId").asLong())
+                    && item.path("studentId").asLong() == 3L
+                    && "WAIT_MARKING".equals(item.path("scoreStatus").asText())) {
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) {
+            throw new AssertionError("待阅卷列表中未找到学生提交的试卷");
+        }
+    }
+
+    @Test
+    void teacherShouldSaveSubjectiveScoreMoreThanOnce() throws Exception {
+        String teacherToken = loginAndGetToken("teacher", "Admin@123");
+        String examName = "阅卷保存评分回归验证";
+        mockMvc.perform(post("/exams")
+                        .header("Authorization", "Bearer " + teacherToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "examName": "%s",
+                                  "paperId": 1,
+                                  "subjectId": 1,
+                                  "startTime": "2026-04-18 14:00:00",
+                                  "endTime": "2026-04-19 14:00:00",
+                                  "durationMinutes": 60,
+                                  "passScore": 24,
+                                  "studentIds": [3]
+                                }
+                                """.formatted(examName)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        String studentToken = loginAndGetToken("student", "Admin@123");
+        Long examId = findStudentExamIdByName(studentToken, examName);
+        mockMvc.perform(post("/answers/exams/" + examId + "/start")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+        mockMvc.perform(post("/answers/exams/" + examId + "/submit")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        MvcResult detailResult = mockMvc.perform(get("/marking/exams/" + examId + "/students/3")
+                        .header("Authorization", "Bearer " + teacherToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn();
+
+        JsonNode detailRoot = objectMapper.readTree(detailResult.getResponse().getContentAsString());
+        Long answerId = null;
+        for (JsonNode item : detailRoot.path("data").path("answers")) {
+            if ("SHORT_ANSWER".equals(item.path("questionType").asText())) {
+                answerId = item.path("id").asLong();
+                break;
+            }
+        }
+        if (answerId == null) {
+            throw new AssertionError("未找到主观题答题记录");
+        }
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/marking/answers/" + answerId)
+                        .header("Authorization", "Bearer " + teacherToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "actualScore": 10,
+                                  "teacherComment": "第一次评分"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/marking/answers/" + answerId)
+                        .header("Authorization", "Bearer " + teacherToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "actualScore": 12,
+                                  "teacherComment": "调整评分"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    @Test
+    void studentShouldViewOwnScoreDetailAndAnswerReviewAfterSubmit() throws Exception {
+        String teacherToken = loginAndGetToken("teacher", "Admin@123");
+        String examName = "学生成绩详情回归验证";
+        mockMvc.perform(post("/exams")
+                        .header("Authorization", "Bearer " + teacherToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "examName": "%s",
+                                  "paperId": 1,
+                                  "subjectId": 1,
+                                  "startTime": "2026-04-18 14:00:00",
+                                  "endTime": "2026-04-19 14:00:00",
+                                  "durationMinutes": 60,
+                                  "passScore": 24,
+                                  "studentIds": [3]
+                                }
+                                """.formatted(examName)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        String studentToken = loginAndGetToken("student", "Admin@123");
+        Long examId = findStudentExamIdByName(studentToken, examName);
+
+        mockMvc.perform(post("/answers/exams/" + examId + "/start")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(post("/answers/exams/" + examId + "/submit")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(get("/scores/exams/" + examId)
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.examId").value(examId))
+                .andExpect(jsonPath("$.data.studentId").value(3));
+
+        mockMvc.perform(get("/answers/exams/" + examId + "/detail")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.length()").value(greaterThanOrEqualTo(1)));
+    }
+
+    @Test
+    void studentWrongBookShouldContainIncorrectObjectiveAnswersAfterSubmit() throws Exception {
+        String teacherToken = loginAndGetToken("teacher", "Admin@123");
+        String examName = "错题本回归验证";
+        mockMvc.perform(post("/exams")
+                        .header("Authorization", "Bearer " + teacherToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "examName": "%s",
+                                  "paperId": 1,
+                                  "subjectId": 1,
+                                  "startTime": "2026-04-18 14:00:00",
+                                  "endTime": "2026-04-19 14:00:00",
+                                  "durationMinutes": 60,
+                                  "passScore": 24,
+                                  "studentIds": [3]
+                                }
+                                """.formatted(examName)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        String studentToken = loginAndGetToken("student", "Admin@123");
+        Long examId = findStudentExamIdByName(studentToken, examName);
+
+        mockMvc.perform(post("/answers/exams/" + examId + "/start")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(put("/answers/exams/" + examId)
+                        .header("Authorization", "Bearer " + studentToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "answers": [
+                                    {
+                                      "questionId": 1,
+                                      "answers": ["implements"]
+                                    }
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(post("/answers/exams/" + examId + "/submit")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        MvcResult wrongResult = mockMvc.perform(get("/questions/wrong")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn();
+
+        JsonNode wrongRoot = objectMapper.readTree(wrongResult.getResponse().getContentAsString());
+        boolean matched = false;
+        for (JsonNode item : wrongRoot.path("data")) {
+            if (item.path("id").asLong() == 1L) {
+                if (!"implements".equals(item.path("studentAnswers").path(0).asText())) {
+                    throw new AssertionError("错题本未返回学生原始作答记录");
+                }
+                if (item.path("actualScore").asInt(-1) != 0) {
+                    throw new AssertionError("错题本未返回错误题目的实际得分");
+                }
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) {
+            throw new AssertionError("错题本中未找到错误作答的客观题");
+        }
+    }
+
     private String loginAndGetToken(String username, String password) throws Exception {
         MvcResult mvcResult = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -232,5 +491,20 @@ class ApiIntegrationTests {
                 .andReturn();
         JsonNode root = objectMapper.readTree(mvcResult.getResponse().getContentAsString());
         return root.path("data").path("token").asText();
+    }
+
+    private Long findStudentExamIdByName(String token, String examName) throws Exception {
+        MvcResult mvcResult = mockMvc.perform(get("/answers/exams")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn();
+        JsonNode root = objectMapper.readTree(mvcResult.getResponse().getContentAsString());
+        for (JsonNode item : root.path("data").path("records")) {
+            if (examName.equals(item.path("examName").asText())) {
+                return item.path("id").asLong();
+            }
+        }
+        throw new AssertionError("未找到考试: " + examName);
     }
 }

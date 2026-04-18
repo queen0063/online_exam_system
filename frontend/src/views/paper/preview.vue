@@ -26,6 +26,7 @@
           :index="index"
           :show-analysis="true"
           :model-value="[]"
+          readonly
         />
       </div>
     </div>

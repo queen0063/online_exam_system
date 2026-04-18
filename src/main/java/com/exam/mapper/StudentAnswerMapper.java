@@ -13,6 +13,8 @@ public interface StudentAnswerMapper {
     StudentAnswer selectByExamIdAndStudentIdAndQuestionId(
             @Param("examId") Long examId, @Param("studentId") Long studentId, @Param("questionId") Long questionId);
 
+    StudentAnswer selectById(@Param("id") Long id);
+
     List<StudentAnswer> selectPendingByTeacherId(@Param("teacherId") Long teacherId, @Param("offset") Integer offset, @Param("pageSize") Integer pageSize);
 
     Long countPendingByTeacherId(@Param("teacherId") Long teacherId);

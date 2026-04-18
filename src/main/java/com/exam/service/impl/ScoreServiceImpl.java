@@ -6,9 +6,11 @@ import com.exam.common.result.PageResult;
 import com.exam.dto.score.ScoreQueryDTO;
 import com.exam.entity.Exam;
 import com.exam.entity.ExamScore;
+import com.exam.entity.ExamStudent;
 import com.exam.entity.SysUser;
 import com.exam.mapper.ExamMapper;
 import com.exam.mapper.ExamScoreMapper;
+import com.exam.mapper.ExamStudentMapper;
 import com.exam.mapper.SysUserMapper;
 import com.exam.security.context.SecurityContextUtils;
 import com.exam.service.ScoreService;
@@ -26,11 +28,17 @@ public class ScoreServiceImpl implements ScoreService {
 
     private final ExamScoreMapper examScoreMapper;
     private final ExamMapper examMapper;
+    private final ExamStudentMapper examStudentMapper;
     private final SysUserMapper sysUserMapper;
 
-    public ScoreServiceImpl(ExamScoreMapper examScoreMapper, ExamMapper examMapper, SysUserMapper sysUserMapper) {
+    public ScoreServiceImpl(
+            ExamScoreMapper examScoreMapper,
+            ExamMapper examMapper,
+            ExamStudentMapper examStudentMapper,
+            SysUserMapper sysUserMapper) {
         this.examScoreMapper = examScoreMapper;
         this.examMapper = examMapper;
+        this.examStudentMapper = examStudentMapper;
         this.sysUserMapper = sysUserMapper;
     }
 
@@ -51,12 +59,14 @@ public class ScoreServiceImpl implements ScoreService {
 
     @Override
     public ScoreVO detail(Long examId, Long studentId) {
-        Exam exam = getAccessibleExam(examId);
+        Exam exam = getExam(examId);
         if (studentId == null) {
             studentId = SecurityContextUtils.getUserId();
         }
-        if (!SecurityContextUtils.hasAnyRole("ADMIN", "TEACHER") && !studentId.equals(SecurityContextUtils.getUserId())) {
-            throw new BusinessException(ResultCode.FORBIDDEN, "学生只能查看自己的成绩");
+        if (SecurityContextUtils.hasAnyRole("ADMIN", "TEACHER")) {
+            validateTeacherScoreAccess(exam);
+        } else {
+            validateStudentScoreAccess(examId, studentId);
         }
         ExamScore examScore = examScoreMapper.selectByExamIdAndStudentId(examId, studentId);
         if (examScore == null) {
@@ -82,7 +92,7 @@ public class ScoreServiceImpl implements ScoreService {
 
     @Override
     public ScoreStatisticsVO statistics(Long examId) {
-        getAccessibleExam(examId);
+        validateTeacherScoreAccess(getExam(examId));
         Integer totalCount = defaultZero(examScoreMapper.selectTotalCount(examId));
         Integer passCount = defaultZero(examScoreMapper.selectPassCount(examId));
         Integer excellentCount = defaultZero(examScoreMapper.selectExcellentCount(examId));
@@ -101,13 +111,14 @@ public class ScoreServiceImpl implements ScoreService {
 
     @Override
     public List<ScoreVO> ranking(Long examId) {
-        getAccessibleExam(examId);
+        validateTeacherScoreAccess(getExam(examId));
         return examScoreMapper.selectRanking(examId);
     }
 
     @Override
     public byte[] export(Long examId) {
-        Exam exam = getAccessibleExam(examId);
+        Exam exam = getExam(examId);
+        validateTeacherScoreAccess(exam);
         List<ScoreVO> ranking = examScoreMapper.selectRanking(examId);
         StringBuilder builder = new StringBuilder("\uFEFF");
         builder.append("考试ID,考试名称,学生ID,学生姓名,客观题得分,主观题得分,总分,排名,及格,优秀,成绩状态,发布时间\n");
@@ -129,15 +140,29 @@ public class ScoreServiceImpl implements ScoreService {
         return builder.toString().getBytes(StandardCharsets.UTF_8);
     }
 
-    private Exam getAccessibleExam(Long examId) {
+    private Exam getExam(Long examId) {
         Exam exam = examMapper.selectById(examId);
         if (exam == null) {
             throw new BusinessException(ResultCode.NOT_FOUND, "考试不存在");
         }
+        return exam;
+    }
+
+    private void validateTeacherScoreAccess(Exam exam) {
         if (!SecurityContextUtils.hasAnyRole("ADMIN") && !exam.getCreatorId().equals(SecurityContextUtils.getUserId())) {
             throw new BusinessException(ResultCode.FORBIDDEN, "教师只能查看自己考试的成绩");
         }
-        return exam;
+    }
+
+    private void validateStudentScoreAccess(Long examId, Long studentId) {
+        Long currentUserId = SecurityContextUtils.getUserId();
+        if (!studentId.equals(currentUserId)) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "学生只能查看自己的成绩");
+        }
+        ExamStudent examStudent = examStudentMapper.selectByExamIdAndStudentId(examId, currentUserId);
+        if (examStudent == null) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "没有考试权限");
+        }
     }
 
     private String csvValue(String value) {

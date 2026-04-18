@@ -57,12 +57,16 @@ export interface QuestionRecord {
   title: string
   options?: string[]
   answers: string[]
+  studentAnswers?: string[]
+  questionScore?: number
+  actualScore?: number
   analysis?: string
   score: number
   difficulty: string
   knowledgePoint: string
   creatorId?: number
   createTime?: string
+  submitTime?: string
 }
 
 export interface PaperQuestionRecord {

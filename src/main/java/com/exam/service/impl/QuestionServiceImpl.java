@@ -76,7 +76,16 @@ public class QuestionServiceImpl implements QuestionService {
 
     @Override
     public List<QuestionVO> wrongQuestions(Long studentId) {
-        return questionMapper.selectWrongQuestions(studentId).stream().map(QuestionConvert::toVO).toList();
+        return questionMapper.selectWrongQuestions(studentId).stream()
+                .map(question -> {
+                    QuestionVO questionVO = QuestionConvert.toVO(question);
+                    questionVO.setStudentAnswers(JsonUtils.toStringList(question.getStudentAnswerContent()));
+                    questionVO.setQuestionScore(question.getQuestionScore());
+                    questionVO.setActualScore(question.getActualScore());
+                    questionVO.setSubmitTime(question.getSubmitTime());
+                    return questionVO;
+                })
+                .toList();
     }
 
     private Question getQuestion(Long id) {

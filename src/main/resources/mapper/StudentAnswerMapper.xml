@@ -27,6 +27,14 @@
         limit 1
     </select>
 
+    <select id="selectById" resultType="com.exam.entity.StudentAnswer">
+        select <include refid="Base_Column_List"/>
+        from student_answer
+        where deleted = 0
+          and id = #{id}
+        limit 1
+    </select>
+
     <select id="selectPendingByTeacherId" resultType="com.exam.entity.StudentAnswer">
         select sa.<include refid="Base_Column_List"/>
         from student_answer sa

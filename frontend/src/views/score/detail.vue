@@ -29,7 +29,7 @@
 
     <div class="two-column">
       <chart-card title="成绩构成" description="客观题与主观题占比" :option="scoreOption" />
-      <chart-card title="全体排名" description="当前考试排名前十" :option="rankingOption" />
+      <chart-card v-if="!isStudent" title="全体排名" description="当前考试排名前十" :option="rankingOption" />
     </div>
 
     <div v-if="isStudent" class="app-card answer-list">
@@ -50,6 +50,7 @@
           :index="index"
           :show-analysis="true"
           :model-value="item.studentAnswers || []"
+          readonly
         />
       </div>
     </div>
@@ -131,13 +132,14 @@ const rankingOption = computed<EChartsOption>(() => ({
 }))
 
 async function loadData() {
-  const [detailResult, rankingResult] = await Promise.all([
-    getScoreDetailApi(examId.value, isStudent.value ? undefined : queryStudentId.value),
-    getScoreRankingApi(examId.value)
-  ])
-
+  const detailResult = await getScoreDetailApi(examId.value, isStudent.value ? undefined : queryStudentId.value)
   detail.value = detailResult.data
-  ranking.value = rankingResult.data
+  if (!isStudent.value) {
+    const rankingResult = await getScoreRankingApi(examId.value)
+    ranking.value = rankingResult.data
+  } else {
+    ranking.value = []
+  }
 
   if (isStudent.value) {
     try {

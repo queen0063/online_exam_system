@@ -238,7 +238,7 @@ public class AnswerServiceImpl implements AnswerService {
     @Override
     public List<AnswerVO> answerDetail(Long examId) {
         Exam exam = getAccessibleExam(examId);
-        validateExamParticipation(examStudentMapper.selectByExamIdAndStudentId(examId, SecurityContextUtils.getUserId()));
+        validateAnswerReviewAccess(examStudentMapper.selectByExamIdAndStudentId(examId, SecurityContextUtils.getUserId()));
         return buildExamQuestionList(exam);
     }
 
@@ -362,6 +362,17 @@ public class AnswerServiceImpl implements AnswerService {
                 || AnswerStatusEnum.WAIT_MARKING.name().equals(examStudent.getAnswerStatus())
                 || AnswerStatusEnum.MARKED.name().equals(examStudent.getAnswerStatus())) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "试卷已提交，不能再次参加考试");
+        }
+    }
+
+    private void validateAnswerReviewAccess(ExamStudent examStudent) {
+        if (examStudent == null) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "没有考试权限");
+        }
+        if (!AnswerStatusEnum.SUBMITTED.name().equals(examStudent.getAnswerStatus())
+                && !AnswerStatusEnum.WAIT_MARKING.name().equals(examStudent.getAnswerStatus())
+                && !AnswerStatusEnum.MARKED.name().equals(examStudent.getAnswerStatus())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "提交试卷后才能查看答题详情");
         }
     }
 }

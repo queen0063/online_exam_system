@@ -7,10 +7,11 @@
       <template v-else>
         <div v-for="(item, index) in questionList" :key="item.id" class="app-card page-block">
           <question-renderer
-            :question="{ ...item, questionScore: item.score, standardAnswers: item.answers }"
+            :question="{ ...item, questionScore: item.questionScore || item.score, standardAnswers: item.answers }"
             :index="index"
             :show-analysis="true"
-            :model-value="[]"
+            :model-value="item.studentAnswers || []"
+            readonly
           />
         </div>
         <div v-if="questionList.length === 0" class="app-card page-block">

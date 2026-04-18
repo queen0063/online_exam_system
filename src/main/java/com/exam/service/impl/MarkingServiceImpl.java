@@ -23,10 +23,7 @@ import com.exam.service.MarkingService;
 import com.exam.vo.answer.AnswerVO;
 import com.exam.vo.marking.MarkingVO;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,23 +58,11 @@ public class MarkingServiceImpl implements MarkingService {
     @Override
     public PageResult<MarkingVO> pendingPage(PageQueryDTO pageQueryDTO) {
         int offset = (pageQueryDTO.getPageNum() - 1) * pageQueryDTO.getPageSize();
-        List<StudentAnswer> rows = studentAnswerMapper.selectPendingByTeacherId(SecurityContextUtils.getUserId(), offset, pageQueryDTO.getPageSize());
-        Map<String, MarkingVO> resultMap = new LinkedHashMap<>();
-        for (StudentAnswer row : rows) {
-            Exam exam = examMapper.selectById(row.getExamId());
-            SysUser student = sysUserMapper.selectById(row.getStudentId());
-            String key = row.getExamId() + "_" + row.getStudentId();
-            resultMap.computeIfAbsent(
-                    key,
-                    ignored -> MarkingVO.builder()
-                            .examId(row.getExamId())
-                            .examName(exam.getExamName())
-                            .studentId(row.getStudentId())
-                            .studentName(student.getRealName())
-                            .answers(new ArrayList<>())
-                            .build());
-        }
-        return new PageResult<>(new ArrayList<>(resultMap.values()), studentAnswerMapper.countPendingByTeacherId(SecurityContextUtils.getUserId()), pageQueryDTO.getPageNum(), pageQueryDTO.getPageSize());
+        boolean admin = SecurityContextUtils.hasAnyRole("ADMIN");
+        List<MarkingVO> records =
+                examScoreMapper.selectPendingMarkingPage(SecurityContextUtils.getUserId(), offset, pageQueryDTO.getPageSize(), admin);
+        Long total = examScoreMapper.countPendingMarking(SecurityContextUtils.getUserId(), admin);
+        return new PageResult<>(records, total, pageQueryDTO.getPageNum(), pageQueryDTO.getPageSize());
     }
 
     @Override
@@ -128,7 +113,12 @@ public class MarkingServiceImpl implements MarkingService {
         if (markingScoreDTO.getActualScore() > answer.getQuestionScore()) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "得分不能超过题目分值");
         }
+        if (answer.getObjectiveFlag() != null && answer.getObjectiveFlag() == 1) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "客观题无需人工评分");
+        }
         answer.setActualScore(markingScoreDTO.getActualScore());
+        answer.setCorrectFlag(markingScoreDTO.getActualScore() != null
+                && markingScoreDTO.getActualScore().equals(answer.getQuestionScore()) ? 1 : 0);
         answer.setTeacherComment(markingScoreDTO.getTeacherComment());
         answer.setMarkingStatus(AnswerStatusEnum.MARKED.name());
         answer.setUpdateTime(LocalDateTime.now());
@@ -182,10 +172,12 @@ public class MarkingServiceImpl implements MarkingService {
     }
 
     private StudentAnswer getAnswer(Long answerId) {
-        return studentAnswerMapper.selectPendingByTeacherId(SecurityContextUtils.getUserId(), 0, Integer.MAX_VALUE).stream()
-                .filter(item -> item.getId().equals(answerId))
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "答题记录不存在"));
+        StudentAnswer answer = studentAnswerMapper.selectById(answerId);
+        if (answer == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "答题记录不存在");
+        }
+        getOwnedExam(answer.getExamId());
+        return answer;
     }
 
     private Exam buildGradedExam(Exam exam) {

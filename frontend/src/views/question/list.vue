@@ -154,6 +154,7 @@
         :index="0"
         :show-analysis="true"
         :model-value="[]"
+        readonly
       />
     </el-drawer>
   </page-container>
