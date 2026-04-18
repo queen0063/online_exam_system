@@ -66,9 +66,15 @@
                  inner join exam_student es on e.id = es.exam_id and es.deleted = 0
         where e.deleted = 0
           and es.student_id = #{studentId}
-        <if test="status != null and status != ''">
-            and e.status = #{status}
-        </if>
+          and e.status != 'DRAFT'
+        <choose>
+            <when test="status == 'ENDED'">
+                and e.status in ('ENDED', 'GRADED', 'RESULT_PUBLISHED')
+            </when>
+            <when test="status != null and status != ''">
+                and e.status = #{status}
+            </when>
+        </choose>
         order by e.id desc
         limit #{offset}, #{pageSize}
     </select>
@@ -79,9 +85,15 @@
                  inner join exam_student es on e.id = es.exam_id and es.deleted = 0
         where e.deleted = 0
           and es.student_id = #{studentId}
-        <if test="status != null and status != ''">
-            and e.status = #{status}
-        </if>
+          and e.status != 'DRAFT'
+        <choose>
+            <when test="status == 'ENDED'">
+                and e.status in ('ENDED', 'GRADED', 'RESULT_PUBLISHED')
+            </when>
+            <when test="status != null and status != ''">
+                and e.status = #{status}
+            </when>
+        </choose>
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">

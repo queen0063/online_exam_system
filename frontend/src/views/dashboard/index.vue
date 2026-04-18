@@ -22,7 +22,8 @@
       <div class="two-column">
         <div class="app-card dashboard__notice">
           <div class="dashboard__section-title">最新公告</div>
-          <el-timeline>
+          <el-empty v-if="notices.length === 0" description="暂无公告" />
+          <el-timeline v-else>
             <el-timeline-item v-for="item in notices" :key="item.id" :timestamp="formatDateTime(item.createTime)">
               <router-link :to="`/notice/detail/${item.id}`">{{ item.title }}</router-link>
             </el-timeline-item>
@@ -44,44 +45,39 @@
 </template>
 
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import type { EChartsOption } from 'echarts'
 
+import { getAnswerExamPageApi } from '@/api/modules/answer'
 import ChartCard from '@/components/chart/ChartCard.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import PageContainer from '@/components/common/PageContainer.vue'
+import { getExamPageApi } from '@/api/modules/exam'
+import { getPendingMarkingApi } from '@/api/modules/marking'
 import { getNoticePageApi } from '@/api/modules/notice'
+import { getPaperPageApi } from '@/api/modules/paper'
+import { getQuestionPageApi, getWrongQuestionApi } from '@/api/modules/question'
+import { getMyScorePageApi, getScorePageApi } from '@/api/modules/score'
+import { getUserPageApi } from '@/api/modules/user'
 import { useUserStore } from '@/stores/user'
 import { formatDateTime } from '@/utils/format'
-import type { NoticeRecord } from '@/types'
+import type { ExamRecord, NoticeRecord } from '@/types'
 
 const userStore = useUserStore()
+const cards = ref<Array<{ title: string; value: string; foot: string; icon: string; bg: string }>>([])
 const notices = ref<NoticeRecord[]>([])
+const todos = ref<Array<{ title: string; description: string }>>([])
+const trendData = ref<number[]>(Array(7).fill(0))
+const pieData = ref<Array<{ value: number; name: string }>>([])
 
-const cards = computed(() => {
-  if (userStore.roleCodes.includes('ADMIN')) {
-    return [
-      { title: '用户总数', value: '128', foot: '管理员视角总览', icon: 'User', bg: 'rgba(37, 99, 235, 0.12)' },
-      { title: '考试总数', value: '24', foot: '本学期累计', icon: 'Calendar', bg: 'rgba(22, 163, 74, 0.12)' },
-      { title: '试卷总数', value: '18', foot: '可用题库资源', icon: 'Document', bg: 'rgba(217, 119, 6, 0.12)' },
-      { title: '题目总数', value: '368', foot: '覆盖多题型', icon: 'EditPen', bg: 'rgba(139, 92, 246, 0.12)' }
-    ]
-  }
-  if (userStore.roleCodes.includes('TEACHER')) {
-    return [
-      { title: '我的考试', value: '9', foot: '本周 3 场待发布', icon: 'Notebook', bg: 'rgba(37, 99, 235, 0.12)' },
-      { title: '我的试卷', value: '12', foot: '含 4 份随机卷', icon: 'CollectionTag', bg: 'rgba(22, 163, 74, 0.12)' },
-      { title: '待阅卷', value: '6', foot: '主观题待批改', icon: 'Finished', bg: 'rgba(217, 119, 6, 0.12)' },
-      { title: '平均得分', value: '82.5', foot: '近 5 场考试', icon: 'TrendCharts', bg: 'rgba(139, 92, 246, 0.12)' }
-    ]
-  }
-  return [
-    { title: '待参加考试', value: '2', foot: '请关注开始时间', icon: 'AlarmClock', bg: 'rgba(37, 99, 235, 0.12)' },
-    { title: '进行中考试', value: '1', foot: '已进入答题阶段', icon: 'Timer', bg: 'rgba(22, 163, 74, 0.12)' },
-    { title: '最近成绩', value: '88', foot: '最新一次考试成绩', icon: 'Medal', bg: 'rgba(217, 119, 6, 0.12)' },
-    { title: '公告提醒', value: '3', foot: '含 1 条考试通知', icon: 'Bell', bg: 'rgba(139, 92, 246, 0.12)' }
-  ]
-})
+const WEEK_LABELS = Array.from({ length: 7 }, (_, index) => dayjs().subtract(6 - index, 'day').format('MM-DD'))
+const CARD_BACKGROUNDS = [
+  'rgba(37, 99, 235, 0.12)',
+  'rgba(22, 163, 74, 0.12)',
+  'rgba(217, 119, 6, 0.12)',
+  'rgba(139, 92, 246, 0.12)'
+]
 
 const trendOption = computed<EChartsOption>(() => ({
   tooltip: { trigger: 'axis' },
@@ -89,14 +85,14 @@ const trendOption = computed<EChartsOption>(() => ({
   xAxis: {
     type: 'category',
     boundaryGap: false,
-    data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+    data: WEEK_LABELS
   },
   yAxis: { type: 'value' },
   series: [
     {
       type: 'line',
       smooth: true,
-      data: userStore.roleCodes.includes('STUDENT') ? [1, 2, 0, 3, 2, 1, 0] : [5, 7, 6, 8, 10, 6, 9],
+      data: trendData.value,
       areaStyle: {
         color: 'rgba(37, 99, 235, 0.12)'
       },
@@ -123,60 +119,226 @@ const pieOption = computed<EChartsOption>(() => ({
         borderColor: '#fff',
         borderWidth: 4
       },
-      data: userStore.roleCodes.includes('ADMIN')
-        ? [
-            { value: 36, name: '题库建设' },
-            { value: 24, name: '考试发布' },
-            { value: 18, name: '用户管理' },
-            { value: 22, name: '公告通知' }
-          ]
-        : userStore.roleCodes.includes('TEACHER')
-          ? [
-              { value: 42, name: '待阅卷' },
-              { value: 28, name: '试卷维护' },
-              { value: 18, name: '考试管理' },
-              { value: 12, name: '成绩分析' }
-            ]
-          : [
-              { value: 40, name: '待考试' },
-              { value: 22, name: '作答中' },
-              { value: 28, name: '成绩已发布' },
-              { value: 10, name: '错题复盘' }
-            ]
+      data: pieData.value
     }
   ]
 }))
 
-const todos = computed(() => {
-  if (userStore.roleCodes.includes('ADMIN')) {
-    return [
-      { title: '审核新建题库资源', description: '有 5 道教师提交的新题待确认。' },
-      { title: '检查本周公告排期', description: '请确认期中考试通知是否已发布。' }
-    ]
-  }
-  if (userStore.roleCodes.includes('TEACHER')) {
-    return [
-      { title: '完成主观题批改', description: 'Java 后端期中考试还有 6 份待阅卷。' },
-      { title: '补充填空题资源', description: '本周题库填空题占比偏低。' }
-    ]
-  }
-  return [
-    { title: '准备参加考试', description: '今天 14:30 有一场“Java 后端期中考试”。' },
-    { title: '复盘错题本', description: '最近新增 4 道错题建议复习。' }
-  ]
-})
+function formatCount(value: number, digits = 0) {
+  return digits > 0 ? value.toFixed(digits) : String(value)
+}
 
-async function loadNotices() {
+function isFinishedAnswerStatus(status?: string) {
+  return ['SUBMITTED', 'WAIT_MARKING', 'MARKED'].includes(status || '')
+}
+
+function buildDailyCounts(values: Array<string | undefined>) {
+  return WEEK_LABELS.map((label) => values.filter((value) => value && dayjs(value).format('MM-DD') === label).length)
+}
+
+function sortByTimeDesc<T>(records: T[], getter: (record: T) => string | undefined) {
+  return [...records].sort((left, right) => dayjs(getter(right)).valueOf() - dayjs(getter(left)).valueOf())
+}
+
+function sortByClosestFutureExam(exams: ExamRecord[]) {
+  return [...exams].sort((left, right) => dayjs(left.startTime).valueOf() - dayjs(right.startTime).valueOf())
+}
+
+async function loadAdminDashboard() {
+  const [userResult, examResult, paperResult, questionResult, noticeResult] = await Promise.all([
+    getUserPageApi({ pageNum: 1, pageSize: 1000 }),
+    getExamPageApi({ pageNum: 1, pageSize: 1000 }),
+    getPaperPageApi({ pageNum: 1, pageSize: 1000 }),
+    getQuestionPageApi({ pageNum: 1, pageSize: 1000 }),
+    getNoticePageApi({ pageNum: 1, pageSize: 1000, noticeStatus: 'PUBLISHED' })
+  ])
+
+  const latestNotices = sortByTimeDesc(noticeResult.data.records, (item) => item.createTime)
+  notices.value = latestNotices.slice(0, 5)
+  cards.value = [
+    { title: '用户总数', value: formatCount(userResult.data.total), foot: '数据库实时用户数', icon: 'User', bg: CARD_BACKGROUNDS[0] },
+    { title: '考试总数', value: formatCount(examResult.data.total), foot: '当前数据库考试记录', icon: 'Calendar', bg: CARD_BACKGROUNDS[1] },
+    { title: '试卷总数', value: formatCount(paperResult.data.total), foot: '数据库可用试卷数', icon: 'Document', bg: CARD_BACKGROUNDS[2] },
+    { title: '题目总数', value: formatCount(questionResult.data.total), foot: '数据库题库总量', icon: 'EditPen', bg: CARD_BACKGROUNDS[3] }
+  ]
+
+  trendData.value = buildDailyCounts([
+    ...userResult.data.records.map((item) => item.createTime),
+    ...examResult.data.records.map((item) => item.startTime),
+    ...paperResult.data.records.map((item) => item.createTime),
+    ...questionResult.data.records.map((item) => item.createTime),
+    ...latestNotices.map((item) => item.createTime)
+  ])
+
+  pieData.value = [
+    { value: questionResult.data.total, name: '题库题目' },
+    { value: paperResult.data.total, name: '试卷资源' },
+    { value: examResult.data.total, name: '考试记录' },
+    { value: noticeResult.data.total, name: '已发布公告' }
+  ]
+
+  const upcomingExam = sortByClosestFutureExam(examResult.data.records.filter((item) => dayjs(item.startTime).isAfter(dayjs())))[0]
+  todos.value = [
+    {
+      title: '公告中心',
+      description: latestNotices[0]
+        ? `最新公告为“${latestNotices[0].title}”，当前共有 ${noticeResult.data.total} 条已发布公告。`
+        : '当前数据库中没有已发布公告。'
+    },
+    {
+      title: '考试排期',
+      description: upcomingExam
+        ? `最近一场考试是“${upcomingExam.examName}”，开始时间 ${formatDateTime(upcomingExam.startTime)}。`
+        : '当前数据库中没有待开始考试。'
+    }
+  ]
+}
+
+async function loadTeacherDashboard() {
+  const [examResult, paperResult, pendingResult, scoreResult, noticeResult] = await Promise.all([
+    getExamPageApi({ pageNum: 1, pageSize: 1000 }),
+    getPaperPageApi({ pageNum: 1, pageSize: 1000 }),
+    getPendingMarkingApi({ pageNum: 1, pageSize: 1000 }),
+    getScorePageApi({ pageNum: 1, pageSize: 1000 }),
+    getNoticePageApi({ pageNum: 1, pageSize: 5, noticeStatus: 'PUBLISHED' })
+  ])
+
+  const examRecords = examResult.data.records
+  const paperRecords = paperResult.data.records
+  const scoreRecords = scoreResult.data.records
+  const latestNotices = sortByTimeDesc(noticeResult.data.records, (item) => item.createTime)
+  const draftCount = examRecords.filter((item) => item.status === 'DRAFT').length
+  const averageScore = scoreRecords.length
+    ? scoreRecords.reduce((sum, item) => sum + (item.totalScore || 0), 0) / scoreRecords.length
+    : 0
+
+  notices.value = latestNotices
+  cards.value = [
+    { title: '我的考试', value: formatCount(examResult.data.total), foot: `其中 ${draftCount} 场草稿`, icon: 'Notebook', bg: CARD_BACKGROUNDS[0] },
+    { title: '我的试卷', value: formatCount(paperResult.data.total), foot: '数据库中归属教师的试卷', icon: 'CollectionTag', bg: CARD_BACKGROUNDS[1] },
+    { title: '待阅卷', value: formatCount(pendingResult.data.total), foot: '当前待处理答卷数', icon: 'Finished', bg: CARD_BACKGROUNDS[2] },
+    { title: '平均得分', value: formatCount(averageScore, 1), foot: '按现有成绩记录计算', icon: 'TrendCharts', bg: CARD_BACKGROUNDS[3] }
+  ]
+
+  trendData.value = buildDailyCounts([
+    ...examRecords.map((item) => item.startTime),
+    ...paperRecords.map((item) => item.createTime),
+    ...scoreRecords.map((item) => item.publishTime)
+  ])
+
+  pieData.value = [
+    { value: pendingResult.data.total, name: '待阅卷' },
+    { value: examResult.data.total, name: '我的考试' },
+    { value: paperResult.data.total, name: '我的试卷' },
+    { value: scoreResult.data.total, name: '成绩记录' }
+  ]
+
+  const nextExam = sortByClosestFutureExam(
+    examRecords.filter((item) => item.status !== 'DRAFT' && dayjs(item.startTime).isAfter(dayjs()))
+  )[0]
+  const firstPending = pendingResult.data.records[0]
+  todos.value = [
+    {
+      title: '阅卷提醒',
+      description: firstPending
+        ? `“${firstPending.examName}”仍有 ${pendingResult.data.total} 份待阅卷，当前列表首条学生为 ${firstPending.studentName}。`
+        : '当前没有待阅卷答卷。'
+    },
+    {
+      title: '考试安排',
+      description: nextExam
+        ? `最近一场考试是“${nextExam.examName}”，开始时间 ${formatDateTime(nextExam.startTime)}。`
+        : '当前没有即将开始的考试安排。'
+    }
+  ]
+}
+
+async function loadStudentDashboard() {
+  const [examResult, scoreResult, wrongResult, noticeResult] = await Promise.all([
+    getAnswerExamPageApi({ pageNum: 1, pageSize: 1000 }),
+    getMyScorePageApi({ pageNum: 1, pageSize: 1000 }),
+    getWrongQuestionApi(),
+    getNoticePageApi({ pageNum: 1, pageSize: 1000, noticeStatus: 'PUBLISHED' })
+  ])
+
+  const examRecords = examResult.data.records
+  const scoreRecords = scoreResult.data.records
+  const wrongRecords = wrongResult.data
+  const latestNotices = sortByTimeDesc(noticeResult.data.records, (item) => item.createTime)
+  const latestScores = sortByTimeDesc(scoreRecords, (item) => item.publishTime)
+  const now = dayjs()
+  const pendingExamCount = examRecords.filter((item) => dayjs(item.startTime).isAfter(now) && !isFinishedAnswerStatus(item.answerStatus)).length
+  const ongoingExamCount = examRecords.filter((item) => {
+    const inTimeRange = (dayjs(item.startTime).isBefore(now) || dayjs(item.startTime).isSame(now))
+      && dayjs(item.endTime).isAfter(now)
+    return inTimeRange && !isFinishedAnswerStatus(item.answerStatus)
+  }).length
+  const latestScore = latestScores[0]
+
+  notices.value = latestNotices.slice(0, 5)
+  cards.value = [
+    { title: '待参加考试', value: formatCount(pendingExamCount), foot: '数据库内待开始且未提交的考试', icon: 'AlarmClock', bg: CARD_BACKGROUNDS[0] },
+    { title: '进行中考试', value: formatCount(ongoingExamCount), foot: '当前时间窗口内可作答的考试', icon: 'Timer', bg: CARD_BACKGROUNDS[1] },
+    { title: '最近成绩', value: latestScore ? formatCount(latestScore.totalScore || 0) : '-', foot: latestScore ? `最近一次考试：${latestScore.examName}` : '当前还没有成绩记录', icon: 'Medal', bg: CARD_BACKGROUNDS[2] },
+    { title: '公告提醒', value: formatCount(noticeResult.data.total), foot: '数据库中已发布公告数量', icon: 'Bell', bg: CARD_BACKGROUNDS[3] }
+  ]
+
+  trendData.value = buildDailyCounts([
+    ...examRecords.map((item) => item.startTime),
+    ...latestScores.map((item) => item.publishTime),
+    ...wrongRecords.map((item) => item.submitTime)
+  ])
+
+  pieData.value = [
+    { value: pendingExamCount, name: '待考试' },
+    { value: ongoingExamCount, name: '进行中' },
+    { value: scoreResult.data.total, name: '成绩记录' },
+    { value: wrongRecords.length, name: '错题数量' }
+  ]
+
+  const nearestExam = sortByClosestFutureExam(
+    examRecords.filter((item) => !isFinishedAnswerStatus(item.answerStatus) && dayjs(item.endTime).isAfter(now))
+  )[0]
+  todos.value = [
+    {
+      title: '考试提醒',
+      description: nearestExam
+        ? `最近需要关注的考试是“${nearestExam.examName}”，开始时间 ${formatDateTime(nearestExam.startTime)}。`
+        : '当前没有待参加或进行中的考试。'
+    },
+    {
+      title: '复习提醒',
+      description: wrongRecords.length > 0
+        ? `错题本当前共有 ${wrongRecords.length} 道错题，最近成绩 ${latestScore?.totalScore ?? 0} 分。`
+        : latestScore
+          ? `当前没有错题记录，最近一次考试“${latestScore.examName}”成绩为 ${latestScore.totalScore ?? 0} 分。`
+          : '当前还没有错题和成绩记录。'
+    }
+  ]
+}
+
+async function loadDashboard() {
   try {
-    const result = await getNoticePageApi({ pageNum: 1, pageSize: 5, noticeStatus: 'PUBLISHED' })
-    notices.value = result.data.records
+    if (userStore.roleCodes.includes('ADMIN')) {
+      await loadAdminDashboard()
+      return
+    }
+    if (userStore.roleCodes.includes('TEACHER')) {
+      await loadTeacherDashboard()
+      return
+    }
+    await loadStudentDashboard()
   } catch {
+    cards.value = []
     notices.value = []
+    todos.value = []
+    trendData.value = Array(7).fill(0)
+    pieData.value = []
   }
 }
 
 onMounted(() => {
-  loadNotices()
+  loadDashboard()
 })
 </script>
 

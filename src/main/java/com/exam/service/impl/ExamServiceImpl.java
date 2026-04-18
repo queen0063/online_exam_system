@@ -18,6 +18,7 @@ import com.exam.service.ExamService;
 import com.exam.vo.exam.ExamVO;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,23 +42,22 @@ public class ExamServiceImpl implements ExamService {
     @Override
     public PageResult<ExamVO> page(ExamQueryDTO queryDTO) {
         boolean admin = SecurityContextUtils.hasAnyRole("ADMIN");
-        List<ExamVO> records = examMapper.selectPage(queryDTO, SecurityContextUtils.getUserId(), admin).stream()
-                .map(this::toVO)
+        List<Exam> records = examMapper.selectPage(buildStatusAgnosticQuery(queryDTO), SecurityContextUtils.getUserId(), admin).stream()
+                .map(this::normalizeExamStatus)
+                .filter(exam -> matchesStatus(exam, queryDTO.getStatus()))
                 .toList();
-        Long total = examMapper.selectCount(queryDTO, SecurityContextUtils.getUserId(), admin);
-        return new PageResult<>(records, total, queryDTO.getPageNum(), queryDTO.getPageSize());
+        return buildPagedResult(records, queryDTO);
     }
 
     @Override
     public PageResult<ExamVO> myPage(ExamQueryDTO queryDTO) {
-        int offset = (queryDTO.getPageNum() - 1) * queryDTO.getPageSize();
-        List<ExamVO> records = examMapper
-                .selectStudentExamPage(SecurityContextUtils.getUserId(), queryDTO.getStatus(), offset, queryDTO.getPageSize())
+        List<Exam> records = examMapper
+                .selectStudentExamPage(SecurityContextUtils.getUserId(), null, 0, Integer.MAX_VALUE)
                 .stream()
-                .map(this::toVO)
+                .map(this::normalizeExamStatus)
+                .filter(exam -> matchesStatus(exam, queryDTO.getStatus()))
                 .toList();
-        Long total = examMapper.selectStudentExamCount(SecurityContextUtils.getUserId(), queryDTO.getStatus());
-        return new PageResult<>(records, total, queryDTO.getPageNum(), queryDTO.getPageSize());
+        return buildPagedResult(records, queryDTO);
     }
 
     @Override
@@ -94,9 +94,7 @@ public class ExamServiceImpl implements ExamService {
         exam.setEndTime(examSaveDTO.getEndTime());
         exam.setDurationMinutes(examSaveDTO.getDurationMinutes());
         exam.setPassScore(examSaveDTO.getPassScore());
-        exam.setStatus(LocalDateTime.now().isBefore(examSaveDTO.getStartTime())
-                ? ExamStatusEnum.NOT_STARTED.name()
-                : ExamStatusEnum.IN_PROGRESS.name());
+        exam.setStatus(ExamStatusEnum.DRAFT.name());
         exam.setResultPublished(0);
         exam.setUpdateTime(LocalDateTime.now());
         if (examSaveDTO.getId() == null) {
@@ -114,9 +112,7 @@ public class ExamServiceImpl implements ExamService {
     public void publish(Long id) {
         Exam exam = getExam(id);
         enforceOwnExam(exam);
-        exam.setStatus(LocalDateTime.now().isBefore(exam.getStartTime())
-                ? ExamStatusEnum.NOT_STARTED.name()
-                : ExamStatusEnum.IN_PROGRESS.name());
+        exam.setStatus(resolvePublishStatus(exam));
         exam.setUpdateTime(LocalDateTime.now());
         examMapper.updateById(exam);
     }
@@ -161,13 +157,68 @@ public class ExamServiceImpl implements ExamService {
         if (exam == null) {
             throw new BusinessException(ResultCode.NOT_FOUND, "考试不存在");
         }
-        return exam;
+        return normalizeExamStatus(exam);
     }
 
     private void enforceOwnExam(Exam exam) {
         if (!SecurityContextUtils.hasAnyRole("ADMIN") && !exam.getCreatorId().equals(SecurityContextUtils.getUserId())) {
             throw new BusinessException(ResultCode.FORBIDDEN, "教师只能操作自己创建的考试");
         }
+    }
+
+    private String resolvePublishStatus(Exam exam) {
+        LocalDateTime now = LocalDateTime.now();
+        if (now.isBefore(exam.getStartTime())) {
+            return ExamStatusEnum.NOT_STARTED.name();
+        }
+        if (now.isAfter(exam.getEndTime())) {
+            return ExamStatusEnum.ENDED.name();
+        }
+        return ExamStatusEnum.IN_PROGRESS.name();
+    }
+
+    private String resolveCurrentStatus(Exam exam) {
+        if (ExamStatusEnum.DRAFT.name().equals(exam.getStatus())
+                || ExamStatusEnum.GRADED.name().equals(exam.getStatus())
+                || ExamStatusEnum.RESULT_PUBLISHED.name().equals(exam.getStatus())) {
+            return exam.getStatus();
+        }
+        return resolvePublishStatus(exam);
+    }
+
+    private Exam normalizeExamStatus(Exam exam) {
+        String currentStatus = resolveCurrentStatus(exam);
+        if (!currentStatus.equals(exam.getStatus())) {
+            exam.setStatus(currentStatus);
+            exam.setUpdateTime(LocalDateTime.now());
+            examMapper.updateById(exam);
+        }
+        return exam;
+    }
+
+    private boolean matchesStatus(Exam exam, String status) {
+        if (status == null || status.isBlank()) {
+            return true;
+        }
+        return status.equals(exam.getStatus());
+    }
+
+    private ExamQueryDTO buildStatusAgnosticQuery(ExamQueryDTO queryDTO) {
+        ExamQueryDTO query = new ExamQueryDTO();
+        query.setPageNum(1);
+        query.setPageSize(Integer.MAX_VALUE);
+        query.setExamName(queryDTO.getExamName());
+        return query;
+    }
+
+    private PageResult<ExamVO> buildPagedResult(List<Exam> exams, ExamQueryDTO queryDTO) {
+        int fromIndex = Math.max((queryDTO.getPageNum() - 1) * queryDTO.getPageSize(), 0);
+        if (fromIndex >= exams.size()) {
+            return new PageResult<>(Collections.emptyList(), (long) exams.size(), queryDTO.getPageNum(), queryDTO.getPageSize());
+        }
+        int toIndex = Math.min(fromIndex + queryDTO.getPageSize(), exams.size());
+        List<ExamVO> records = exams.subList(fromIndex, toIndex).stream().map(this::toVO).toList();
+        return new PageResult<>(records, (long) exams.size(), queryDTO.getPageNum(), queryDTO.getPageSize());
     }
 
     private ExamVO toVO(Exam exam) {

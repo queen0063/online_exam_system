@@ -30,11 +30,12 @@ export const PAPER_GENERATE_OPTIONS = [
 ]
 
 export const EXAM_STATUS_OPTIONS = [
+  { label: '草稿', value: 'DRAFT' },
   { label: '未开始', value: 'NOT_STARTED' },
   { label: '进行中', value: 'IN_PROGRESS' },
-  { label: '已结束', value: 'FINISHED' },
-  { label: '已阅卷', value: 'MARKED' },
-  { label: '已发布成绩', value: 'PUBLISHED' }
+  { label: '已结束', value: 'ENDED' },
+  { label: '已阅卷', value: 'GRADED' },
+  { label: '已发布成绩', value: 'RESULT_PUBLISHED' }
 ]
 
 export const NOTICE_STATUS_OPTIONS = [

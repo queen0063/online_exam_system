@@ -30,6 +30,7 @@ import com.exam.service.ScoringService;
 import com.exam.vo.answer.AnswerVO;
 import com.exam.vo.exam.ExamVO;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -74,24 +75,30 @@ public class AnswerServiceImpl implements AnswerService {
 
     @Override
     public PageResult<ExamVO> myExamPage(ExamQueryDTO queryDTO) {
-        int offset = (queryDTO.getPageNum() - 1) * queryDTO.getPageSize();
         List<ExamVO> records = examMapper
-                .selectStudentExamPage(SecurityContextUtils.getUserId(), queryDTO.getStatus(), offset, queryDTO.getPageSize())
+                .selectStudentExamPage(SecurityContextUtils.getUserId(), null, 0, Integer.MAX_VALUE)
                 .stream()
+                .map(this::normalizeExamStatus)
+                .filter(exam -> matchesStatus(exam, queryDTO.getStatus()))
                 .map((exam) -> {
                     ExamStudent examStudent =
                             examStudentMapper.selectByExamIdAndStudentId(exam.getId(), SecurityContextUtils.getUserId());
                     return toExamVO(exam, List.of(), exam.getEndTime(), examStudent == null ? null : examStudent.getAnswerStatus());
                 })
                 .toList();
-        Long total = examMapper.selectStudentExamCount(SecurityContextUtils.getUserId(), queryDTO.getStatus());
-        return new PageResult<>(records, total, queryDTO.getPageNum(), queryDTO.getPageSize());
+        int fromIndex = Math.max((queryDTO.getPageNum() - 1) * queryDTO.getPageSize(), 0);
+        if (fromIndex >= records.size()) {
+            return new PageResult<>(Collections.emptyList(), (long) records.size(), queryDTO.getPageNum(), queryDTO.getPageSize());
+        }
+        int toIndex = Math.min(fromIndex + queryDTO.getPageSize(), records.size());
+        return new PageResult<>(records.subList(fromIndex, toIndex), (long) records.size(), queryDTO.getPageNum(), queryDTO.getPageSize());
     }
 
     @Override
     public ExamVO examDetail(Long examId) {
         Exam exam = getAccessibleExam(examId);
         ExamStudent examStudent = examStudentMapper.selectByExamIdAndStudentId(examId, SecurityContextUtils.getUserId());
+        validateExamAccess(exam);
         validateExamParticipation(examStudent);
         return toExamVO(
                 exam,
@@ -298,10 +305,13 @@ public class AnswerServiceImpl implements AnswerService {
         if (examStudent == null) {
             throw new BusinessException(ResultCode.FORBIDDEN, "没有考试权限");
         }
-        return exam;
+        return normalizeExamStatus(exam);
     }
 
     private void validateExamAccess(Exam exam) {
+        if (ExamStatusEnum.DRAFT.name().equals(exam.getStatus())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "考试尚未发布");
+        }
         LocalDateTime now = LocalDateTime.now();
         if (now.isBefore(exam.getStartTime())) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "学生只能在考试开始后进入考试");
@@ -374,5 +384,43 @@ public class AnswerServiceImpl implements AnswerService {
                 && !AnswerStatusEnum.MARKED.name().equals(examStudent.getAnswerStatus())) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "提交试卷后才能查看答题详情");
         }
+    }
+
+    private Exam normalizeExamStatus(Exam exam) {
+        String currentStatus = resolveCurrentStatus(exam);
+        if (!currentStatus.equals(exam.getStatus())) {
+            exam.setStatus(currentStatus);
+            exam.setUpdateTime(LocalDateTime.now());
+            examMapper.updateById(exam);
+        }
+        return exam;
+    }
+
+    private String resolveCurrentStatus(Exam exam) {
+        if (ExamStatusEnum.DRAFT.name().equals(exam.getStatus())
+                || ExamStatusEnum.GRADED.name().equals(exam.getStatus())
+                || ExamStatusEnum.RESULT_PUBLISHED.name().equals(exam.getStatus())) {
+            return exam.getStatus();
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (now.isBefore(exam.getStartTime())) {
+            return ExamStatusEnum.NOT_STARTED.name();
+        }
+        if (now.isAfter(exam.getEndTime())) {
+            return ExamStatusEnum.ENDED.name();
+        }
+        return ExamStatusEnum.IN_PROGRESS.name();
+    }
+
+    private boolean matchesStatus(Exam exam, String status) {
+        if (status == null || status.isBlank()) {
+            return true;
+        }
+        if (ExamStatusEnum.ENDED.name().equals(status)) {
+            return ExamStatusEnum.ENDED.name().equals(exam.getStatus())
+                    || ExamStatusEnum.GRADED.name().equals(exam.getStatus())
+                    || ExamStatusEnum.RESULT_PUBLISHED.name().equals(exam.getStatus());
+        }
+        return status.equals(exam.getStatus());
     }
 }

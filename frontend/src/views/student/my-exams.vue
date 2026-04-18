@@ -5,7 +5,7 @@
         <el-radio-button label="">全部</el-radio-button>
         <el-radio-button label="NOT_STARTED">待参加</el-radio-button>
         <el-radio-button label="IN_PROGRESS">进行中</el-radio-button>
-        <el-radio-button label="FINISHED">已结束</el-radio-button>
+        <el-radio-button label="ENDED">已结束</el-radio-button>
       </el-radio-group>
     </div>
 

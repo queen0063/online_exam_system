@@ -1,5 +1,5 @@
 <template>
-  <page-container title="考试管理" description="创建考试、发布考试、发布成绩，并维护参考对象和考试时间。">
+  <page-container title="考试管理" description="保存考试草稿、发布考试、发布成绩，并维护参考对象和考试时间。">
     <query-bar>
       <el-form :model="queryForm" inline>
         <el-form-item label="考试名称">
@@ -163,7 +163,7 @@ const initialForm = () => ({
   endTime: '',
   durationMinutes: 60,
   passScore: 60,
-  status: 'NOT_STARTED',
+  status: 'DRAFT',
   studentIds: [3] as number[]
 })
 

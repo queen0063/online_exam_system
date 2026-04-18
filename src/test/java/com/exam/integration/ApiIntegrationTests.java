@@ -1,6 +1,9 @@
 package com.exam.integration;
 
 import com.exam.OnlineExamApplication;
+import com.exam.entity.Exam;
+import com.exam.mapper.ExamMapper;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +37,9 @@ class ApiIntegrationTests {
 
     @Autowired
     private WebApplicationContext webApplicationContext;
+
+    @Autowired
+    private ExamMapper examMapper;
 
     private MockMvc mockMvc;
 
@@ -180,6 +186,48 @@ class ApiIntegrationTests {
     }
 
     @Test
+    void studentExamListShouldRefreshPublishedExamStatusWhenStartTimeArrives() throws Exception {
+        String teacherToken = loginAndGetToken("teacher", "Admin@123");
+        String examName = "考试状态自动流转回归验证";
+        mockMvc.perform(post("/exams")
+                        .header("Authorization", "Bearer " + teacherToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "examName": "%s",
+                                  "paperId": 1,
+                                  "subjectId": 1,
+                                  "startTime": "2026-04-19 14:00:00",
+                                  "endTime": "2026-04-19 15:00:00",
+                                  "durationMinutes": 60,
+                                  "passScore": 24,
+                                  "studentIds": [3]
+                                }
+                                """.formatted(examName)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        Long examId = findTeacherExamIdByName(teacherToken, examName);
+        publishExam(teacherToken, examId);
+
+        Exam exam = examMapper.selectById(examId);
+        exam.setStartTime(LocalDateTime.now().minusMinutes(5));
+        exam.setEndTime(LocalDateTime.now().plusMinutes(55));
+        exam.setStatus("NOT_STARTED");
+        exam.setUpdateTime(LocalDateTime.now());
+        examMapper.updateById(exam);
+
+        String studentToken = loginAndGetToken("student", "Admin@123");
+        mockMvc.perform(get("/answers/exams")
+                        .header("Authorization", "Bearer " + studentToken)
+                        .param("status", "IN_PROGRESS"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.records[0].id").value(examId))
+                .andExpect(jsonPath("$.data.records[0].status").value("IN_PROGRESS"));
+    }
+
+    @Test
     void studentExamDetailShouldReturnPersonalCountdownDeadlineAfterStart() throws Exception {
         String token = loginAndGetToken("student", "Admin@123");
         mockMvc.perform(post("/answers/exams/1/start")
@@ -242,6 +290,9 @@ class ApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
+        Long publishedExamId = findTeacherExamIdByName(teacherToken, examName);
+        publishExam(teacherToken, publishedExamId);
+
         String studentToken = loginAndGetToken("student", "Admin@123");
         Long examId = findStudentExamIdByName(studentToken, examName);
 
@@ -298,6 +349,9 @@ class ApiIntegrationTests {
                                 """.formatted(examName)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
+
+        Long publishedExamId = findTeacherExamIdByName(teacherToken, examName);
+        publishExam(teacherToken, publishedExamId);
 
         String studentToken = loginAndGetToken("student", "Admin@123");
         Long examId = findStudentExamIdByName(studentToken, examName);
@@ -375,6 +429,9 @@ class ApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
+        Long publishedExamId = findTeacherExamIdByName(teacherToken, examName);
+        publishExam(teacherToken, publishedExamId);
+
         String studentToken = loginAndGetToken("student", "Admin@123");
         Long examId = findStudentExamIdByName(studentToken, examName);
 
@@ -423,6 +480,9 @@ class ApiIntegrationTests {
                                 """.formatted(examName)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
+
+        Long publishedExamId = findTeacherExamIdByName(teacherToken, examName);
+        publishExam(teacherToken, publishedExamId);
 
         String studentToken = loginAndGetToken("student", "Admin@123");
         Long examId = findStudentExamIdByName(studentToken, examName);
@@ -478,6 +538,41 @@ class ApiIntegrationTests {
         }
     }
 
+    @Test
+    void draftExamShouldBeHiddenFromStudentUntilPublished() throws Exception {
+        String teacherToken = loginAndGetToken("teacher", "Admin@123");
+        String examName = "草稿考试发布回归验证";
+        mockMvc.perform(post("/exams")
+                        .header("Authorization", "Bearer " + teacherToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "examName": "%s",
+                                  "paperId": 1,
+                                  "subjectId": 1,
+                                  "startTime": "2026-04-18 14:00:00",
+                                  "endTime": "2026-04-19 14:00:00",
+                                  "durationMinutes": 60,
+                                  "passScore": 24,
+                                  "studentIds": [3]
+                                }
+                                """.formatted(examName)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        String studentToken = loginAndGetToken("student", "Admin@123");
+        if (studentExamExistsByName(studentToken, examName)) {
+            throw new AssertionError("草稿考试不应出现在学生考试列表");
+        }
+
+        Long examId = findTeacherExamIdByName(teacherToken, examName);
+        publishExam(teacherToken, examId);
+
+        if (!studentExamExistsByName(studentToken, examName)) {
+            throw new AssertionError("发布后学生考试列表中应可见该考试");
+        }
+    }
+
     private String loginAndGetToken(String username, String password) throws Exception {
         MvcResult mvcResult = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -506,5 +601,43 @@ class ApiIntegrationTests {
             }
         }
         throw new AssertionError("未找到考试: " + examName);
+    }
+
+    private Long findTeacherExamIdByName(String token, String examName) throws Exception {
+        MvcResult mvcResult = mockMvc.perform(get("/exams")
+                        .header("Authorization", "Bearer " + token)
+                        .param("examName", examName))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn();
+        JsonNode root = objectMapper.readTree(mvcResult.getResponse().getContentAsString());
+        for (JsonNode item : root.path("data").path("records")) {
+            if (examName.equals(item.path("examName").asText())) {
+                return item.path("id").asLong();
+            }
+        }
+        throw new AssertionError("教师列表中未找到考试: " + examName);
+    }
+
+    private boolean studentExamExistsByName(String token, String examName) throws Exception {
+        MvcResult mvcResult = mockMvc.perform(get("/answers/exams")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn();
+        JsonNode root = objectMapper.readTree(mvcResult.getResponse().getContentAsString());
+        for (JsonNode item : root.path("data").path("records")) {
+            if (examName.equals(item.path("examName").asText())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void publishExam(String token, Long examId) throws Exception {
+        mockMvc.perform(post("/exams/" + examId + "/publish")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
     }
 }
