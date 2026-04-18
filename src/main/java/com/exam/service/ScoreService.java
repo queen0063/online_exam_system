@@ -18,5 +18,5 @@ public interface ScoreService {
 
     List<ScoreVO> ranking(Long examId);
 
-    void exportReserve(Long examId);
+    byte[] export(Long examId);
 }

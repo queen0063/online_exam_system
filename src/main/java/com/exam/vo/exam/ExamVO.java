@@ -1,6 +1,8 @@
 package com.exam.vo.exam;
 
+import com.exam.vo.answer.AnswerVO;
 import java.time.LocalDateTime;
+import java.util.List;
 import lombok.Builder;
 import lombok.Data;
 
@@ -22,4 +24,5 @@ public class ExamVO {
     private Integer passScore;
     private String status;
     private Integer resultPublished;
+    private List<AnswerVO> questions;
 }

@@ -9,7 +9,12 @@ import com.exam.service.ScoreService;
 import com.exam.vo.score.ScoreStatisticsVO;
 import com.exam.vo.score.ScoreVO;
 import jakarta.validation.Valid;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -43,6 +48,7 @@ public class ScoreController {
     }
 
     @GetMapping("/exams/{examId}")
+    @PreAuthorize("hasAnyRole('ADMIN','TEACHER','STUDENT')")
     public Result<ScoreVO> detail(@PathVariable Long examId, Long studentId) {
         return Result.success(scoreService.detail(examId, studentId));
     }
@@ -61,9 +67,15 @@ public class ScoreController {
 
     @PostMapping("/exams/{examId}/export")
     @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
-    @OperationLog(module = "成绩管理", description = "导出成绩预留接口", operationType = OperationTypeEnum.EXPORT)
-    public Result<Void> export(@PathVariable Long examId) {
-        scoreService.exportReserve(examId);
-        return Result.success("已预留导出接口", null);
+    @OperationLog(module = "成绩管理", description = "导出成绩", operationType = OperationTypeEnum.EXPORT)
+    public ResponseEntity<byte[]> export(@PathVariable Long examId) {
+        byte[] content = scoreService.export(examId);
+        String fileName = "exam-score-" + examId + ".csv";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));
+        headers.setContentDisposition(ContentDisposition.attachment().filename(fileName, StandardCharsets.UTF_8).build());
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(content);
     }
 }

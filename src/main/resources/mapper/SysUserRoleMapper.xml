@@ -19,4 +19,12 @@
         where user_id = #{userId}
           and deleted = 0
     </update>
+
+    <update id="deleteByRoleId">
+        update sys_user_role
+        set deleted = 1,
+            update_time = now()
+        where role_id = #{roleId}
+          and deleted = 0
+    </update>
 </mapper>

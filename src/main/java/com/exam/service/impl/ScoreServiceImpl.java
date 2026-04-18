@@ -14,7 +14,7 @@ import com.exam.security.context.SecurityContextUtils;
 import com.exam.service.ScoreService;
 import com.exam.vo.score.ScoreStatisticsVO;
 import com.exam.vo.score.ScoreVO;
-import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -51,14 +51,17 @@ public class ScoreServiceImpl implements ScoreService {
 
     @Override
     public ScoreVO detail(Long examId, Long studentId) {
+        Exam exam = getAccessibleExam(examId);
         if (studentId == null) {
             studentId = SecurityContextUtils.getUserId();
+        }
+        if (!SecurityContextUtils.hasAnyRole("ADMIN", "TEACHER") && !studentId.equals(SecurityContextUtils.getUserId())) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "学生只能查看自己的成绩");
         }
         ExamScore examScore = examScoreMapper.selectByExamIdAndStudentId(examId, studentId);
         if (examScore == null) {
             throw new BusinessException(ResultCode.NOT_FOUND, "成绩不存在");
         }
-        Exam exam = examMapper.selectById(examId);
         SysUser student = sysUserMapper.selectById(studentId);
         return ScoreVO.builder()
                 .id(examScore.getId())
@@ -79,6 +82,7 @@ public class ScoreServiceImpl implements ScoreService {
 
     @Override
     public ScoreStatisticsVO statistics(Long examId) {
+        getAccessibleExam(examId);
         Integer totalCount = defaultZero(examScoreMapper.selectTotalCount(examId));
         Integer passCount = defaultZero(examScoreMapper.selectPassCount(examId));
         Integer excellentCount = defaultZero(examScoreMapper.selectExcellentCount(examId));
@@ -97,19 +101,48 @@ public class ScoreServiceImpl implements ScoreService {
 
     @Override
     public List<ScoreVO> ranking(Long examId) {
+        getAccessibleExam(examId);
         return examScoreMapper.selectRanking(examId);
     }
 
     @Override
-    public void exportReserve(Long examId) {
+    public byte[] export(Long examId) {
+        Exam exam = getAccessibleExam(examId);
+        List<ScoreVO> ranking = examScoreMapper.selectRanking(examId);
+        StringBuilder builder = new StringBuilder("\uFEFF");
+        builder.append("考试ID,考试名称,学生ID,学生姓名,客观题得分,主观题得分,总分,排名,及格,优秀,成绩状态,发布时间\n");
+        for (ScoreVO score : ranking) {
+            builder.append(examId).append(',')
+                    .append(csvValue(exam.getExamName())).append(',')
+                    .append(score.getStudentId()).append(',')
+                    .append(csvValue(score.getStudentName())).append(',')
+                    .append(defaultZero(score.getObjectiveScore())).append(',')
+                    .append(defaultZero(score.getSubjectiveScore())).append(',')
+                    .append(defaultZero(score.getTotalScore())).append(',')
+                    .append(defaultZero(score.getRankNo())).append(',')
+                    .append(score.getPassFlag() != null && score.getPassFlag() == 1 ? "是" : "否").append(',')
+                    .append(score.getExcellentFlag() != null && score.getExcellentFlag() == 1 ? "是" : "否").append(',')
+                    .append(csvValue(score.getScoreStatus())).append(',')
+                    .append(csvValue(score.getPublishTime() == null ? "" : score.getPublishTime().toString()))
+                    .append('\n');
+        }
+        return builder.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private Exam getAccessibleExam(Long examId) {
         Exam exam = examMapper.selectById(examId);
         if (exam == null) {
             throw new BusinessException(ResultCode.NOT_FOUND, "考试不存在");
         }
         if (!SecurityContextUtils.hasAnyRole("ADMIN") && !exam.getCreatorId().equals(SecurityContextUtils.getUserId())) {
-            throw new BusinessException(ResultCode.FORBIDDEN, "教师只能导出自己考试的成绩");
+            throw new BusinessException(ResultCode.FORBIDDEN, "教师只能查看自己考试的成绩");
         }
-        // 预留导出能力，后续可接 EasyExcel 或 CSV 导出。
+        return exam;
+    }
+
+    private String csvValue(String value) {
+        String text = value == null ? "" : value;
+        return "\"" + text.replace("\"", "\"\"") + "\"";
     }
 
     private Integer defaultZero(Integer value) {

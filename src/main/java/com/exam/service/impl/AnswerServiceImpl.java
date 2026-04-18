@@ -87,7 +87,7 @@ public class AnswerServiceImpl implements AnswerService {
     @Override
     public ExamVO examDetail(Long examId) {
         Exam exam = getAccessibleExam(examId);
-        return toExamVO(exam);
+        return toExamVO(exam, buildExamQuestionList(exam));
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -214,29 +214,34 @@ public class AnswerServiceImpl implements AnswerService {
 
     @Override
     public List<AnswerVO> answerDetail(Long examId) {
-        getAccessibleExam(examId);
-        return buildAnswerVOList(examId, SecurityContextUtils.getUserId());
+        Exam exam = getAccessibleExam(examId);
+        return buildExamQuestionList(exam);
     }
 
-    private List<AnswerVO> buildAnswerVOList(Long examId, Long studentId) {
-        List<StudentAnswer> answers = studentAnswerMapper.selectByExamIdAndStudentId(examId, studentId);
-        return answers.stream()
-                .sorted(Comparator.comparing(StudentAnswer::getQuestionId))
-                .map(answer -> {
-                    Question question = questionMapper.selectById(answer.getQuestionId());
+    private List<AnswerVO> buildExamQuestionList(Exam exam) {
+        Long studentId = SecurityContextUtils.getUserId();
+        Map<Long, StudentAnswer> answerMap = new HashMap<>();
+        for (StudentAnswer answer : studentAnswerMapper.selectByExamIdAndStudentId(exam.getId(), studentId)) {
+            answerMap.put(answer.getQuestionId(), answer);
+        }
+        return paperQuestionMapper.selectByPaperId(exam.getPaperId()).stream()
+                .sorted(Comparator.comparing(PaperQuestion::getSortNo))
+                .map(paperQuestion -> {
+                    Question question = questionMapper.selectById(paperQuestion.getQuestionId());
+                    StudentAnswer answer = answerMap.get(question.getId());
                     return AnswerVO.builder()
-                            .id(answer.getId())
-                            .questionId(answer.getQuestionId())
+                            .id(answer == null ? null : answer.getId())
+                            .questionId(question.getId())
                             .questionType(question.getQuestionType())
                             .title(question.getTitle())
                             .options(JsonUtils.toStringList(question.getOptionsJson()))
                             .standardAnswers(JsonUtils.toStringList(question.getAnswerJson()))
-                            .studentAnswers(JsonUtils.toStringList(answer.getAnswerContent()))
-                            .questionScore(answer.getQuestionScore())
-                            .actualScore(answer.getActualScore())
-                            .teacherComment(answer.getTeacherComment())
-                            .markingStatus(answer.getMarkingStatus())
-                            .submitTime(answer.getSubmitTime())
+                            .studentAnswers(answer == null ? List.of() : JsonUtils.toStringList(answer.getAnswerContent()))
+                            .questionScore(paperQuestion.getQuestionScore())
+                            .actualScore(answer == null ? 0 : answer.getActualScore())
+                            .teacherComment(answer == null ? null : answer.getTeacherComment())
+                            .markingStatus(answer == null ? AnswerStatusEnum.NOT_STARTED.name() : answer.getMarkingStatus())
+                            .submitTime(answer == null ? null : answer.getSubmitTime())
                             .build();
                 })
                 .toList();
@@ -288,6 +293,10 @@ public class AnswerServiceImpl implements AnswerService {
     }
 
     private ExamVO toExamVO(Exam exam) {
+        return toExamVO(exam, List.of());
+    }
+
+    private ExamVO toExamVO(Exam exam, List<AnswerVO> questions) {
         return ExamVO.builder()
                 .id(exam.getId())
                 .examName(exam.getExamName())
@@ -300,6 +309,7 @@ public class AnswerServiceImpl implements AnswerService {
                 .passScore(exam.getPassScore())
                 .status(exam.getStatus())
                 .resultPublished(exam.getResultPublished())
+                .questions(questions)
                 .build();
     }
 }

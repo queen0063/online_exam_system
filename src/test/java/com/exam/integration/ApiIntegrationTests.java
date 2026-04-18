@@ -15,9 +15,12 @@ import org.springframework.web.context.WebApplicationContext;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -84,6 +87,50 @@ class ApiIntegrationTests {
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.examId").value(1))
                 .andExpect(jsonPath("$.data.scoreSegments.length()").value(5));
+    }
+
+    @Test
+    void teacherShouldExportScoreCsv() throws Exception {
+        String token = loginAndGetToken("teacher", "Admin@123");
+        mockMvc.perform(post("/scores/exams/1/export")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", containsString("exam-score-1.csv")))
+                .andExpect(content().string(containsString("考试ID,考试名称")));
+    }
+
+    @Test
+    void adminShouldSaveRole() throws Exception {
+        String token = loginAndGetToken("admin", "Admin@123");
+        mockMvc.perform(post("/roles")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "roleCode": "ASSISTANT_IT",
+                                  "roleName": "助教",
+                                  "status": 1
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(get("/roles")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(greaterThanOrEqualTo(4)));
+    }
+
+    @Test
+    void studentShouldQueryExamDetailWithQuestions() throws Exception {
+        String token = loginAndGetToken("student", "Admin@123");
+        mockMvc.perform(get("/answers/exams/1")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.id").value(1))
+                .andExpect(jsonPath("$.data.questions.length()").value(greaterThanOrEqualTo(1)))
+                .andExpect(jsonPath("$.data.questions[0].title").isNotEmpty());
     }
 
     private String loginAndGetToken(String username, String password) throws Exception {

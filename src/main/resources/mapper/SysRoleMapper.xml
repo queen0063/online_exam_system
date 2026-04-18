@@ -15,6 +15,21 @@
         order by id asc
     </select>
 
+    <select id="selectById" resultType="com.exam.entity.SysRole">
+        select <include refid="Base_Column_List"/>
+        from sys_role
+        where id = #{id}
+          and deleted = 0
+    </select>
+
+    <select id="selectByRoleCode" resultType="com.exam.entity.SysRole">
+        select <include refid="Base_Column_List"/>
+        from sys_role
+        where role_code = #{roleCode}
+          and deleted = 0
+        limit 1
+    </select>
+
     <select id="selectRolesByUserId" resultType="com.exam.entity.SysRole">
         select r.id,
                r.role_code,
@@ -39,4 +54,27 @@
             #{id}
         </foreach>
     </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        insert into sys_role(role_code, role_name, status, create_time, update_time, deleted)
+        values (#{roleCode}, #{roleName}, #{status}, #{createTime}, #{updateTime}, #{deleted})
+    </insert>
+
+    <update id="updateById">
+        update sys_role
+        set role_code = #{roleCode},
+            role_name = #{roleName},
+            status = #{status},
+            update_time = #{updateTime}
+        where id = #{id}
+          and deleted = 0
+    </update>
+
+    <update id="logicDeleteById">
+        update sys_role
+        set deleted = 1,
+            update_time = now()
+        where id = #{id}
+          and deleted = 0
+    </update>
 </mapper>
