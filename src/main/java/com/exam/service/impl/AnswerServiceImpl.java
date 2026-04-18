@@ -78,7 +78,11 @@ public class AnswerServiceImpl implements AnswerService {
         List<ExamVO> records = examMapper
                 .selectStudentExamPage(SecurityContextUtils.getUserId(), queryDTO.getStatus(), offset, queryDTO.getPageSize())
                 .stream()
-                .map(this::toExamVO)
+                .map((exam) -> {
+                    ExamStudent examStudent =
+                            examStudentMapper.selectByExamIdAndStudentId(exam.getId(), SecurityContextUtils.getUserId());
+                    return toExamVO(exam, List.of(), exam.getEndTime(), examStudent == null ? null : examStudent.getAnswerStatus());
+                })
                 .toList();
         Long total = examMapper.selectStudentExamCount(SecurityContextUtils.getUserId(), queryDTO.getStatus());
         return new PageResult<>(records, total, queryDTO.getPageNum(), queryDTO.getPageSize());
@@ -87,7 +91,13 @@ public class AnswerServiceImpl implements AnswerService {
     @Override
     public ExamVO examDetail(Long examId) {
         Exam exam = getAccessibleExam(examId);
-        return toExamVO(exam, buildExamQuestionList(exam));
+        ExamStudent examStudent = examStudentMapper.selectByExamIdAndStudentId(examId, SecurityContextUtils.getUserId());
+        validateExamParticipation(examStudent);
+        return toExamVO(
+                exam,
+                buildExamQuestionList(exam),
+                resolveCountdownEndTime(exam, examStudent),
+                examStudent == null ? null : examStudent.getAnswerStatus());
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -95,6 +105,18 @@ public class AnswerServiceImpl implements AnswerService {
     public void startExam(Long examId) {
         Exam exam = getAccessibleExam(examId);
         validateExamAccess(exam);
+        ExamStudent examStudent = examStudentMapper.selectByExamIdAndStudentId(examId, SecurityContextUtils.getUserId());
+        if (examStudent == null) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "没有考试权限");
+        }
+        if (AnswerStatusEnum.ANSWERING.name().equals(examStudent.getAnswerStatus())) {
+            return;
+        }
+        if (AnswerStatusEnum.SUBMITTED.name().equals(examStudent.getAnswerStatus())
+                || AnswerStatusEnum.MARKED.name().equals(examStudent.getAnswerStatus())
+                || AnswerStatusEnum.WAIT_MARKING.name().equals(examStudent.getAnswerStatus())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "试卷已提交，不能重新进入考试");
+        }
         examStudentMapper.updateAnswerStatus(examId, SecurityContextUtils.getUserId(), AnswerStatusEnum.ANSWERING.name());
     }
 
@@ -103,6 +125,7 @@ public class AnswerServiceImpl implements AnswerService {
     public void saveAnswers(Long examId, AnswerSaveDTO answerSaveDTO) {
         Exam exam = getAccessibleExam(examId);
         validateExamAccess(exam);
+        validateExamParticipation(examStudentMapper.selectByExamIdAndStudentId(examId, SecurityContextUtils.getUserId()));
         Paper paper = paperMapper.selectById(exam.getPaperId());
         Map<Long, PaperQuestion> paperQuestionMap = paperQuestionMapper.selectByPaperId(paper.getId()).stream()
                 .collect(HashMap::new, (map, item) -> map.put(item.getQuestionId(), item), HashMap::putAll);
@@ -215,6 +238,7 @@ public class AnswerServiceImpl implements AnswerService {
     @Override
     public List<AnswerVO> answerDetail(Long examId) {
         Exam exam = getAccessibleExam(examId);
+        validateExamParticipation(examStudentMapper.selectByExamIdAndStudentId(examId, SecurityContextUtils.getUserId()));
         return buildExamQuestionList(exam);
     }
 
@@ -255,7 +279,10 @@ public class AnswerServiceImpl implements AnswerService {
         studentAnswer.setStudentId(SecurityContextUtils.getUserId());
         studentAnswer.setAnswerContent(JsonUtils.toJson(List.of()));
         studentAnswer.setQuestionScore(paperQuestion.getQuestionScore());
+        studentAnswer.setActualScore(0);
         studentAnswer.setObjectiveFlag(scoringService.isObjectiveQuestion(question.getQuestionType()) ? 1 : 0);
+        studentAnswer.setCorrectFlag(0);
+        studentAnswer.setMarkingStatus(AnswerStatusEnum.ANSWERING.name());
         studentAnswer.setCreateTime(LocalDateTime.now());
         studentAnswer.setUpdateTime(LocalDateTime.now());
         studentAnswer.setDeleted(0);
@@ -293,10 +320,10 @@ public class AnswerServiceImpl implements AnswerService {
     }
 
     private ExamVO toExamVO(Exam exam) {
-        return toExamVO(exam, List.of());
+        return toExamVO(exam, List.of(), exam.getEndTime(), null);
     }
 
-    private ExamVO toExamVO(Exam exam, List<AnswerVO> questions) {
+    private ExamVO toExamVO(Exam exam, List<AnswerVO> questions, LocalDateTime countdownEndTime, String answerStatus) {
         return ExamVO.builder()
                 .id(exam.getId())
                 .examName(exam.getExamName())
@@ -309,7 +336,32 @@ public class AnswerServiceImpl implements AnswerService {
                 .passScore(exam.getPassScore())
                 .status(exam.getStatus())
                 .resultPublished(exam.getResultPublished())
+                .answerStatus(answerStatus)
+                .countdownEndTime(countdownEndTime)
                 .questions(questions)
                 .build();
+    }
+
+    private LocalDateTime resolveCountdownEndTime(Exam exam, ExamStudent examStudent) {
+        LocalDateTime examDeadline = exam.getEndTime();
+        if (examStudent == null) {
+            return examDeadline;
+        }
+        if (!AnswerStatusEnum.ANSWERING.name().equals(examStudent.getAnswerStatus())) {
+            return examDeadline;
+        }
+        LocalDateTime personalDeadline = examStudent.getUpdateTime().plusMinutes(exam.getDurationMinutes());
+        return personalDeadline.isBefore(examDeadline) ? personalDeadline : examDeadline;
+    }
+
+    private void validateExamParticipation(ExamStudent examStudent) {
+        if (examStudent == null) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "没有考试权限");
+        }
+        if (AnswerStatusEnum.SUBMITTED.name().equals(examStudent.getAnswerStatus())
+                || AnswerStatusEnum.WAIT_MARKING.name().equals(examStudent.getAnswerStatus())
+                || AnswerStatusEnum.MARKED.name().equals(examStudent.getAnswerStatus())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "试卷已提交，不能再次参加考试");
+        }
     }
 }

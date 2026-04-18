@@ -28,13 +28,10 @@
         </foreach>
     </insert>
 
-    <update id="deleteByExamId">
-        update exam_student
-        set deleted = 1,
-            update_time = now()
+    <delete id="deleteByExamId">
+        delete from exam_student
         where exam_id = #{examId}
-          and deleted = 0
-    </update>
+    </delete>
 
     <update id="updateAnswerStatus">
         update exam_student

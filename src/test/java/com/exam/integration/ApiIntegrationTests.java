@@ -133,6 +133,92 @@ class ApiIntegrationTests {
                 .andExpect(jsonPath("$.data.questions[0].title").isNotEmpty());
     }
 
+    @Test
+    void teacherShouldSaveExamWithSpaceSeparatedDateTime() throws Exception {
+        String token = loginAndGetToken("teacher", "Admin@123");
+        mockMvc.perform(post("/exams")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "examName": "考试时间格式回归验证",
+                                  "paperId": 1,
+                                  "subjectId": 1,
+                                  "startTime": "2026-04-18 23:16:08",
+                                  "endTime": "2026-04-19 00:16:08",
+                                  "durationMinutes": 60,
+                                  "passScore": 60,
+                                  "studentIds": [3]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    @Test
+    void teacherShouldUpdateExistingExamWithoutExamStudentConstraintFailure() throws Exception {
+        String token = loginAndGetToken("teacher", "Admin@123");
+        mockMvc.perform(post("/exams")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "id": 1,
+                                  "examName": "Java后端期中考试-调整时间",
+                                  "paperId": 1,
+                                  "subjectId": 1,
+                                  "startTime": "2026-04-18 23:16:08",
+                                  "endTime": "2026-04-19 00:16:08",
+                                  "durationMinutes": 60,
+                                  "passScore": 24,
+                                  "studentIds": [3]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    @Test
+    void studentExamDetailShouldReturnPersonalCountdownDeadlineAfterStart() throws Exception {
+        String token = loginAndGetToken("student", "Admin@123");
+        mockMvc.perform(post("/answers/exams/1/start")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(get("/answers/exams/1")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.countdownEndTime").isNotEmpty());
+    }
+
+    @Test
+    void studentShouldNotReenterExamAfterSubmit() throws Exception {
+        String token = loginAndGetToken("student", "Admin@123");
+        mockMvc.perform(post("/answers/exams/1/start")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(post("/answers/exams/1/submit")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(post("/answers/exams/1/start")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("试卷已提交，不能重新进入考试"));
+
+        mockMvc.perform(get("/answers/exams/1")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("试卷已提交，不能再次参加考试"));
+    }
+
     private String loginAndGetToken(String username, String password) throws Exception {
         MvcResult mvcResult = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

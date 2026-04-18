@@ -24,7 +24,9 @@
         </div>
         <div class="exam-card__footer">
           <el-button @click="showDetail(item)">查看详情</el-button>
-          <el-button type="primary" @click="handleEnterExam(item)">进入考试</el-button>
+          <el-button type="primary" :disabled="!canEnterExam(item)" @click="handleEnterExam(item)">
+            {{ getEnterButtonText(item) }}
+          </el-button>
         </div>
       </div>
     </div>
@@ -48,7 +50,7 @@
         class="mt-16"
         type="info"
         :closable="false"
-        title="进入考试后请及时保存答题记录，离开页面前务必确认是否已经提交试卷。"
+        title="进入考试后禁止切屏、切换标签页或离开当前窗口，系统检测到违规将自动交卷。"
       />
     </el-drawer>
   </page-container>
@@ -96,13 +98,17 @@ function showDetail(row: ExamRecord) {
 }
 
 async function handleEnterExam(row: ExamRecord) {
-  try {
-    await startExamApi(Number(row.id))
-  } catch {
-    // 已经开始或后端返回限制时仍允许进入详情页，由考试页继续处理。
-  }
+  await startExamApi(Number(row.id))
   ElMessage.success('已进入考试页面')
   await router.push(`/answer/exam/${row.id}`)
+}
+
+function canEnterExam(row: ExamRecord) {
+  return !['SUBMITTED', 'WAIT_MARKING', 'MARKED'].includes(row.answerStatus || '')
+}
+
+function getEnterButtonText(row: ExamRecord) {
+  return canEnterExam(row) ? '进入考试' : '已提交'
 }
 
 function handlePageChange(pageNum: number, pageSize: number) {

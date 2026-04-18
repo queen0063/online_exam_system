@@ -108,10 +108,12 @@ export interface ExamRecord {
   creatorId?: number
   startTime: string
   endTime: string
+  countdownEndTime?: string
   durationMinutes: number
   passScore: number
   status: string
   resultPublished?: number
+  answerStatus?: string
   studentIds?: number[]
 }
 
