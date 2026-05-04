@@ -245,7 +245,7 @@ public class AnswerServiceImpl implements AnswerService {
     @Override
     public List<AnswerVO> answerDetail(Long examId) {
         Exam exam = getAccessibleExam(examId);
-        validateAnswerReviewAccess(examStudentMapper.selectByExamIdAndStudentId(examId, SecurityContextUtils.getUserId()));
+        validateAnswerReviewAccess(exam, examStudentMapper.selectByExamIdAndStudentId(examId, SecurityContextUtils.getUserId()));
         return buildExamQuestionList(exam);
     }
 
@@ -375,7 +375,7 @@ public class AnswerServiceImpl implements AnswerService {
         }
     }
 
-    private void validateAnswerReviewAccess(ExamStudent examStudent) {
+    private void validateAnswerReviewAccess(Exam exam, ExamStudent examStudent) {
         if (examStudent == null) {
             throw new BusinessException(ResultCode.FORBIDDEN, "没有考试权限");
         }
@@ -383,6 +383,9 @@ public class AnswerServiceImpl implements AnswerService {
                 && !AnswerStatusEnum.WAIT_MARKING.name().equals(examStudent.getAnswerStatus())
                 && !AnswerStatusEnum.MARKED.name().equals(examStudent.getAnswerStatus())) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "提交试卷后才能查看答题详情");
+        }
+        if (exam.getResultPublished() == null || exam.getResultPublished() != 1) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "成绩尚未发布");
         }
     }
 

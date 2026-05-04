@@ -66,7 +66,7 @@ public class ScoreServiceImpl implements ScoreService {
         if (SecurityContextUtils.hasAnyRole("ADMIN", "TEACHER")) {
             validateTeacherScoreAccess(exam);
         } else {
-            validateStudentScoreAccess(examId, studentId);
+            validateStudentScoreAccess(exam, studentId);
         }
         ExamScore examScore = examScoreMapper.selectByExamIdAndStudentId(examId, studentId);
         if (examScore == null) {
@@ -154,14 +154,17 @@ public class ScoreServiceImpl implements ScoreService {
         }
     }
 
-    private void validateStudentScoreAccess(Long examId, Long studentId) {
+    private void validateStudentScoreAccess(Exam exam, Long studentId) {
         Long currentUserId = SecurityContextUtils.getUserId();
         if (!studentId.equals(currentUserId)) {
             throw new BusinessException(ResultCode.FORBIDDEN, "学生只能查看自己的成绩");
         }
-        ExamStudent examStudent = examStudentMapper.selectByExamIdAndStudentId(examId, currentUserId);
+        ExamStudent examStudent = examStudentMapper.selectByExamIdAndStudentId(exam.getId(), currentUserId);
         if (examStudent == null) {
             throw new BusinessException(ResultCode.FORBIDDEN, "没有考试权限");
+        }
+        if (exam.getResultPublished() == null || exam.getResultPublished() != 1) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "成绩尚未发布");
         }
     }
 

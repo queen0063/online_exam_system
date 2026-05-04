@@ -5,6 +5,7 @@ import com.exam.entity.ExamScore;
 import com.exam.vo.marking.MarkingVO;
 import com.exam.vo.score.ScoreSegmentVO;
 import com.exam.vo.score.ScoreVO;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -36,9 +37,13 @@ public interface ExamScoreMapper {
 
     List<ScoreVO> selectRanking(@Param("examId") Long examId);
 
+    Long countUnmarkedByExamId(@Param("examId") Long examId);
+
     int insert(ExamScore examScore);
 
     int updateById(ExamScore examScore);
 
     int updateRankByExamId(@Param("examId") Long examId);
+
+    int updatePublishTimeByExamId(@Param("examId") Long examId, @Param("publishTime") LocalDateTime publishTime);
 }

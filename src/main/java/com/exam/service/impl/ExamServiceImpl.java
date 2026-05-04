@@ -11,6 +11,7 @@ import com.exam.entity.Exam;
 import com.exam.entity.ExamStudent;
 import com.exam.entity.Paper;
 import com.exam.mapper.ExamMapper;
+import com.exam.mapper.ExamScoreMapper;
 import com.exam.mapper.ExamStudentMapper;
 import com.exam.mapper.PaperMapper;
 import com.exam.security.context.SecurityContextUtils;
@@ -32,11 +33,17 @@ public class ExamServiceImpl implements ExamService {
     private final ExamMapper examMapper;
     private final ExamStudentMapper examStudentMapper;
     private final PaperMapper paperMapper;
+    private final ExamScoreMapper examScoreMapper;
 
-    public ExamServiceImpl(ExamMapper examMapper, ExamStudentMapper examStudentMapper, PaperMapper paperMapper) {
+    public ExamServiceImpl(
+            ExamMapper examMapper,
+            ExamStudentMapper examStudentMapper,
+            PaperMapper paperMapper,
+            ExamScoreMapper examScoreMapper) {
         this.examMapper = examMapper;
         this.examStudentMapper = examStudentMapper;
         this.paperMapper = paperMapper;
+        this.examScoreMapper = examScoreMapper;
     }
 
     @Override
@@ -118,13 +125,20 @@ public class ExamServiceImpl implements ExamService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void publishScore(Long id) {
         Exam exam = getExam(id);
         enforceOwnExam(exam);
+        Long unmarkedCount = examScoreMapper.countUnmarkedByExamId(id);
+        if (unmarkedCount != null && unmarkedCount > 0) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "仍有未完成阅卷的成绩，不能发布成绩");
+        }
+        LocalDateTime publishTime = LocalDateTime.now();
         exam.setResultPublished(1);
         exam.setStatus(ExamStatusEnum.RESULT_PUBLISHED.name());
-        exam.setUpdateTime(LocalDateTime.now());
+        exam.setUpdateTime(publishTime);
         examMapper.updateById(exam);
+        examScoreMapper.updatePublishTimeByExamId(id, publishTime);
     }
 
     @Override

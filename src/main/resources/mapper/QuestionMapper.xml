@@ -134,6 +134,7 @@
             sa.submit_time
         from question q
                  inner join student_answer sa on q.id = sa.question_id and sa.deleted = 0
+                 inner join exam e on sa.exam_id = e.id and e.deleted = 0 and e.result_published = 1
         where q.deleted = 0
           and sa.student_id = #{studentId}
           and (
@@ -147,6 +148,7 @@
           and not exists (
             select 1
             from student_answer latest_sa
+                     inner join exam latest_e on latest_sa.exam_id = latest_e.id and latest_e.deleted = 0 and latest_e.result_published = 1
             where latest_sa.deleted = 0
               and latest_sa.student_id = sa.student_id
               and latest_sa.question_id = sa.question_id

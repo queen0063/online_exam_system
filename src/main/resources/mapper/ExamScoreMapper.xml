@@ -118,6 +118,7 @@
                  inner join sys_user u on es.student_id = u.id and u.deleted = 0
         where es.deleted = 0
           and es.student_id = #{studentId}
+          and e.result_published = 1
         <if test="query.examId != null">
             and es.exam_id = #{query.examId}
         </if>
@@ -127,11 +128,13 @@
 
     <select id="selectMyScoreCount" resultType="long">
         select count(1)
-        from exam_score
-        where deleted = 0
-          and student_id = #{studentId}
+        from exam_score es
+                 inner join exam e on es.exam_id = e.id and e.deleted = 0
+        where es.deleted = 0
+          and es.student_id = #{studentId}
+          and e.result_published = 1
         <if test="query.examId != null">
-            and exam_id = #{query.examId}
+            and es.exam_id = #{query.examId}
         </if>
     </select>
 
@@ -183,6 +186,14 @@
         order by es.rank_no asc, es.total_score desc
     </select>
 
+    <select id="countUnmarkedByExamId" resultType="long">
+        select count(1)
+        from exam_score
+        where deleted = 0
+          and exam_id = #{examId}
+          and score_status != 'MARKED'
+    </select>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         insert into exam_score(exam_id, student_id, objective_score, subjective_score, total_score, pass_flag, excellent_flag, rank_no, score_status, submit_time, publish_time, create_time, update_time, deleted)
         values (#{examId}, #{studentId}, #{objectiveScore}, #{subjectiveScore}, #{totalScore}, #{passFlag}, #{excellentFlag}, #{rankNo}, #{scoreStatus}, #{submitTime}, #{publishTime}, #{createTime}, #{updateTime}, #{deleted})
@@ -205,15 +216,27 @@
     </update>
 
     <update id="updateRankByExamId">
-        update exam_score es
-            inner join (
-            select id,
-                   dense_rank() over (order by total_score desc, submit_time asc, id asc) as rank_no
-            from exam_score
-            where deleted = 0 and exam_id = #{examId}
-        ) t on es.id = t.id
-        set es.rank_no = t.rank_no,
-            es.update_time = now()
-        where es.exam_id = #{examId}
+        update exam_score
+        set rank_no = (
+                select ranked.rank_no
+                from (
+                    select id,
+                           dense_rank() over (order by total_score desc, submit_time asc, id asc) as rank_no
+                    from exam_score
+                    where deleted = 0 and exam_id = #{examId}
+                ) ranked
+                where ranked.id = exam_score.id
+            ),
+            update_time = now()
+        where deleted = 0
+          and exam_id = #{examId}
+    </update>
+
+    <update id="updatePublishTimeByExamId">
+        update exam_score
+        set publish_time = #{publishTime},
+            update_time = #{publishTime}
+        where deleted = 0
+          and exam_id = #{examId}
     </update>
 </mapper>

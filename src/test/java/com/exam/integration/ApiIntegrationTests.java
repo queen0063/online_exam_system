@@ -4,6 +4,7 @@ import com.exam.OnlineExamApplication;
 import com.exam.entity.Exam;
 import com.exam.mapper.ExamMapper;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -275,18 +276,7 @@ class ApiIntegrationTests {
         mockMvc.perform(post("/exams")
                         .header("Authorization", "Bearer " + teacherToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "examName": "%s",
-                                  "paperId": 1,
-                                  "subjectId": 1,
-                                  "startTime": "2026-04-18 14:00:00",
-                                  "endTime": "2026-04-19 14:00:00",
-                                  "durationMinutes": 60,
-                                  "passScore": 24,
-                                  "studentIds": [3]
-                                }
-                                """.formatted(examName)))
+                        .content(activeExamPayload(examName)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -335,18 +325,7 @@ class ApiIntegrationTests {
         mockMvc.perform(post("/exams")
                         .header("Authorization", "Bearer " + teacherToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "examName": "%s",
-                                  "paperId": 1,
-                                  "subjectId": 1,
-                                  "startTime": "2026-04-18 14:00:00",
-                                  "endTime": "2026-04-19 14:00:00",
-                                  "durationMinutes": 60,
-                                  "passScore": 24,
-                                  "studentIds": [3]
-                                }
-                                """.formatted(examName)))
+                        .content(activeExamPayload(examName)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -408,24 +387,13 @@ class ApiIntegrationTests {
     }
 
     @Test
-    void studentShouldViewOwnScoreDetailAndAnswerReviewAfterSubmit() throws Exception {
+    void studentShouldViewOwnScoreDetailAndAnswerReviewAfterPublishScore() throws Exception {
         String teacherToken = loginAndGetToken("teacher", "Admin@123");
         String examName = "学生成绩详情回归验证";
         mockMvc.perform(post("/exams")
                         .header("Authorization", "Bearer " + teacherToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "examName": "%s",
-                                  "paperId": 1,
-                                  "subjectId": 1,
-                                  "startTime": "2026-04-18 14:00:00",
-                                  "endTime": "2026-04-19 14:00:00",
-                                  "durationMinutes": 60,
-                                  "passScore": 24,
-                                  "studentIds": [3]
-                                }
-                                """.formatted(examName)))
+                        .content(activeExamPayload(examName)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -445,12 +413,41 @@ class ApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
+        mockMvc.perform(get("/scores/my")
+                        .header("Authorization", "Bearer " + studentToken)
+                        .param("examId", String.valueOf(examId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.total").value(0));
+
+        mockMvc.perform(get("/scores/exams/" + examId)
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("成绩尚未发布"));
+
+        mockMvc.perform(get("/answers/exams/" + examId + "/detail")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("成绩尚未发布"));
+
+        mockMvc.perform(post("/exams/" + examId + "/publish-score")
+                        .header("Authorization", "Bearer " + teacherToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("仍有未完成阅卷的成绩，不能发布成绩"));
+
+        completeSubjectiveMarking(teacherToken, examId, 3L, 12);
+        publishExamScore(teacherToken, examId);
+
         mockMvc.perform(get("/scores/exams/" + examId)
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.examId").value(examId))
-                .andExpect(jsonPath("$.data.studentId").value(3));
+                .andExpect(jsonPath("$.data.studentId").value(3))
+                .andExpect(jsonPath("$.data.publishTime").isNotEmpty());
 
         mockMvc.perform(get("/answers/exams/" + examId + "/detail")
                         .header("Authorization", "Bearer " + studentToken))
@@ -460,24 +457,13 @@ class ApiIntegrationTests {
     }
 
     @Test
-    void studentWrongBookShouldContainIncorrectObjectiveAnswersAfterSubmit() throws Exception {
+    void studentWrongBookShouldContainIncorrectObjectiveAnswersAfterPublishScore() throws Exception {
         String teacherToken = loginAndGetToken("teacher", "Admin@123");
         String examName = "错题本回归验证";
         mockMvc.perform(post("/exams")
                         .header("Authorization", "Bearer " + teacherToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "examName": "%s",
-                                  "paperId": 1,
-                                  "subjectId": 1,
-                                  "startTime": "2026-04-18 14:00:00",
-                                  "endTime": "2026-04-19 14:00:00",
-                                  "durationMinutes": 60,
-                                  "passScore": 24,
-                                  "studentIds": [3]
-                                }
-                                """.formatted(examName)))
+                        .content(activeExamPayload(examName)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -512,6 +498,15 @@ class ApiIntegrationTests {
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(get("/questions/wrong")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.length()").value(0));
+
+        completeSubjectiveMarking(teacherToken, examId, 3L, 12);
+        publishExamScore(teacherToken, examId);
 
         MvcResult wrongResult = mockMvc.perform(get("/questions/wrong")
                         .header("Authorization", "Bearer " + studentToken))
@@ -634,8 +629,75 @@ class ApiIntegrationTests {
         return false;
     }
 
+    private String activeExamPayload(String examName) {
+        LocalDateTime now = LocalDateTime.now();
+        return """
+                {
+                  "examName": "%s",
+                  "paperId": 1,
+                  "subjectId": 1,
+                  "startTime": "%s",
+                  "endTime": "%s",
+                  "durationMinutes": 60,
+                  "passScore": 24,
+                  "studentIds": [3]
+                }
+                """.formatted(
+                examName,
+                formatTestDateTime(now.minusMinutes(5)),
+                formatTestDateTime(now.plusHours(1)));
+    }
+
+    private String formatTestDateTime(LocalDateTime dateTime) {
+        return dateTime.withNano(0).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+    }
+
+    private void completeSubjectiveMarking(String token, Long examId, Long studentId, int actualScore) throws Exception {
+        MvcResult detailResult = mockMvc.perform(get("/marking/exams/" + examId + "/students/" + studentId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn();
+
+        JsonNode detailRoot = objectMapper.readTree(detailResult.getResponse().getContentAsString());
+        Long answerId = null;
+        for (JsonNode item : detailRoot.path("data").path("answers")) {
+            if ("SHORT_ANSWER".equals(item.path("questionType").asText())) {
+                answerId = item.path("id").asLong();
+                break;
+            }
+        }
+        if (answerId == null) {
+            throw new AssertionError("未找到主观题答题记录");
+        }
+
+        mockMvc.perform(put("/marking/answers/" + answerId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "actualScore": %d,
+                                  "teacherComment": "发布前完成评分"
+                                }
+                                """.formatted(actualScore)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(post("/marking/exams/" + examId + "/students/" + studentId + "/finish")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
     private void publishExam(String token, Long examId) throws Exception {
         mockMvc.perform(post("/exams/" + examId + "/publish")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    private void publishExamScore(String token, Long examId) throws Exception {
+        mockMvc.perform(post("/exams/" + examId + "/publish-score")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
