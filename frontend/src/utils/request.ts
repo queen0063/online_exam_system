@@ -12,6 +12,58 @@ const request = axios.create({
   timeout: 15000
 })
 
+let isHandlingUnauthorized = false
+
+function isLoginRequest(url?: string) {
+  return url === '/auth/login' || url?.endsWith('/auth/login')
+}
+
+function getAuthorizationToken(config: any) {
+  const headers = config?.headers
+  const authorization =
+    headers?.Authorization ||
+    headers?.authorization ||
+    headers?.get?.('Authorization') ||
+    headers?.get?.('authorization')
+
+  if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
+    return authorization.slice(7)
+  }
+
+  return ''
+}
+
+async function handleUnauthorized(error: unknown, config?: any) {
+  const requestToken = getAuthorizationToken(config)
+  const currentToken = getToken()
+
+  if (requestToken && currentToken && requestToken !== currentToken) {
+    return Promise.reject(error)
+  }
+
+  if (isHandlingUnauthorized) {
+    return Promise.reject(error)
+  }
+
+  isHandlingUnauthorized = true
+
+  const userStore = useUserStore()
+  const currentRoute = router.currentRoute.value
+
+  userStore.resetState()
+  resetRouter()
+  ElMessage.error('登录已失效，请重新登录')
+
+  if (currentRoute.path !== '/login') {
+    await router.replace({
+      path: '/login',
+      query: { redirect: currentRoute.fullPath }
+    })
+  }
+
+  return Promise.reject(error)
+}
+
 request.interceptors.request.use((config) => {
   const token = getToken()
   if (token) {
@@ -27,8 +79,14 @@ request.interceptors.response.use(
     }
     const result = response.data as ApiResult
     if (result.code !== 200) {
+      if (result.code === 401 && !isLoginRequest(response.config?.url)) {
+        return handleUnauthorized(result, response.config)
+      }
       ElMessage.error(result.message || '请求失败')
       return Promise.reject(result)
+    }
+    if (isLoginRequest(response.config?.url)) {
+      isHandlingUnauthorized = false
     }
     return result as any
   }) as any,
@@ -37,14 +95,7 @@ request.interceptors.response.use(
     const message = error?.response?.data?.message || error?.message || '网络异常'
 
     if (status === 401) {
-      const userStore = useUserStore()
-      userStore.resetState()
-      resetRouter()
-      if (router.currentRoute.value.path !== '/login') {
-        await router.replace(`/login?redirect=${encodeURIComponent(router.currentRoute.value.fullPath)}`)
-      }
-      ElMessage.error('登录已失效，请重新登录')
-      return Promise.reject(error)
+      return handleUnauthorized(error, error?.config)
     }
 
     if (status === 403) {

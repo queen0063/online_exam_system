@@ -53,7 +53,7 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 import { getAnswerExamDetailApi, saveAnswerApi, submitAnswerApi } from '@/api/modules/answer'
@@ -226,6 +226,14 @@ onMounted(() => {
   window.addEventListener('beforeunload', handleBeforeUnload)
   window.addEventListener('blur', handleWindowBlur)
   document.addEventListener('visibilitychange', handleVisibilityChange)
+})
+
+onBeforeRouteLeave(() => {
+  if (examFinished.value || isSubmitting.value) {
+    return true
+  }
+  void triggerForcedSubmit('检测到离开考试页面，系统已自动交卷')
+  return false
 })
 
 onBeforeUnmount(() => {
