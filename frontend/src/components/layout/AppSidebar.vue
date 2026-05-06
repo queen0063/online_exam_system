@@ -72,12 +72,11 @@ function resolvePath(parentPath: string, childPath: string) {
 
 <style scoped lang="scss">
 .sidebar {
+  position: sticky;
+  top: 0;
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98)),
-    radial-gradient(circle at top, rgba(37, 99, 235, 0.15), transparent 30%);
   color: #fff;
 }
 

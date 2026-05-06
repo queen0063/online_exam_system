@@ -48,10 +48,11 @@ onBeforeUnmount(() => {
 }
 
 .layout-shell__sidebar {
-  position: sticky;
-  top: 0;
   width: $sidebar-width;
   min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98)),
+    radial-gradient(circle at top, rgba(37, 99, 235, 0.15), transparent 30%);
   transition: width 0.2s ease;
 }
 
@@ -85,6 +86,8 @@ onBeforeUnmount(() => {
 @media (max-width: 960px) {
   .layout-shell__sidebar {
     position: fixed;
+    top: 0;
+    bottom: 0;
     z-index: 20;
     box-shadow: $shadow-card;
   }
