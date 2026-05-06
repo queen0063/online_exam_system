@@ -124,7 +124,8 @@ public class AnswerServiceImpl implements AnswerService {
                 || AnswerStatusEnum.WAIT_MARKING.name().equals(examStudent.getAnswerStatus())) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "试卷已提交，不能重新进入考试");
         }
-        examStudentMapper.updateAnswerStatus(examId, SecurityContextUtils.getUserId(), AnswerStatusEnum.ANSWERING.name());
+        examStudentMapper.updateAnswerStatus(
+                examId, SecurityContextUtils.getUserId(), AnswerStatusEnum.ANSWERING.name(), LocalDateTime.now());
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -236,7 +237,10 @@ public class AnswerServiceImpl implements AnswerService {
             examScoreMapper.updateById(examScore);
         }
         examStudentMapper.updateAnswerStatus(
-                examId, SecurityContextUtils.getUserId(), hasSubjective ? AnswerStatusEnum.WAIT_MARKING.name() : AnswerStatusEnum.MARKED.name());
+                examId,
+                SecurityContextUtils.getUserId(),
+                hasSubjective ? AnswerStatusEnum.WAIT_MARKING.name() : AnswerStatusEnum.MARKED.name(),
+                LocalDateTime.now());
         if (!hasSubjective) {
             examScoreMapper.updateRankByExamId(examId);
         }

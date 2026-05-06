@@ -155,7 +155,7 @@ public class MarkingServiceImpl implements MarkingService {
         examScore.setScoreStatus(AnswerStatusEnum.MARKED.name());
         examScore.setUpdateTime(LocalDateTime.now());
         examScoreMapper.updateById(examScore);
-        examStudentMapper.updateAnswerStatus(examId, studentId, AnswerStatusEnum.MARKED.name());
+        examStudentMapper.updateAnswerStatus(examId, studentId, AnswerStatusEnum.MARKED.name(), LocalDateTime.now());
         examMapper.updateById(buildGradedExam(exam));
         examScoreMapper.updateRankByExamId(examId);
     }

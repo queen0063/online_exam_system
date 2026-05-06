@@ -36,7 +36,7 @@
     <update id="updateAnswerStatus">
         update exam_student
         set answer_status = #{answerStatus},
-            update_time = now()
+            update_time = #{updateTime}
         where exam_id = #{examId}
           and student_id = #{studentId}
           and deleted = 0

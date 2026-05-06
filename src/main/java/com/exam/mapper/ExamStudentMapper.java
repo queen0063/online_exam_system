@@ -1,6 +1,7 @@
 package com.exam.mapper;
 
 import com.exam.entity.ExamStudent;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -16,5 +17,9 @@ public interface ExamStudentMapper {
 
     int deleteByExamId(@Param("examId") Long examId);
 
-    int updateAnswerStatus(@Param("examId") Long examId, @Param("studentId") Long studentId, @Param("answerStatus") String answerStatus);
+    int updateAnswerStatus(
+            @Param("examId") Long examId,
+            @Param("studentId") Long studentId,
+            @Param("answerStatus") String answerStatus,
+            @Param("updateTime") LocalDateTime updateTime);
 }
