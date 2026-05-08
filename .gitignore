@@ -5,10 +5,7 @@ target/
 !**/src/test/**/target/
 
 ### CUSTOM ###
-application.properties
-application.yml
-application-*.properties
-application-*.yml
+application-prod.yml
 
 ### STS ###
 .apt_generated
