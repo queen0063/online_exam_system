@@ -14,6 +14,7 @@ public class Question extends BaseEntity {
     private Long subjectId;
     private String questionType;
     private String title;
+    private String imageJson;
     private String optionsJson;
     private String answerJson;
     private String analysis;

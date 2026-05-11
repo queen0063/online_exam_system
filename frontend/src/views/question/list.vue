@@ -7,7 +7,7 @@
         </el-form-item>
         <el-form-item label="科目">
           <el-select v-model="queryForm.subjectId" clearable placeholder="全部科目" style="width: 160px">
-            <el-option v-for="item in SUBJECT_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+            <el-option v-for="item in subjectOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="题型">
@@ -37,6 +37,19 @@
           </template>
         </el-table-column>
         <el-table-column prop="title" label="题干" min-width="340" show-overflow-tooltip />
+        <el-table-column label="图片" width="90">
+          <template #default="{ row }">
+            <el-image
+              v-if="row.imageUrls?.length"
+              class="question-thumb"
+              :src="row.imageUrls[0]"
+              :preview-src-list="row.imageUrls"
+              fit="cover"
+              preview-teleported
+            />
+            <span v-else class="empty-text">无</span>
+          </template>
+        </el-table-column>
         <el-table-column label="知识点" min-width="140" prop="knowledgePoint" />
         <el-table-column label="难度" width="100">
           <template #default="{ row }">
@@ -72,7 +85,7 @@
         <div class="two-column">
           <el-form-item label="科目" prop="subjectId">
             <el-select v-model="form.subjectId" class="w-full">
-              <el-option v-for="item in SUBJECT_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+              <el-option v-for="item in subjectOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
           <el-form-item label="题型" prop="questionType">
@@ -94,6 +107,25 @@
         </el-form-item>
         <el-form-item label="题干" prop="title">
           <el-input v-model="form.title" type="textarea" :rows="4" placeholder="请输入题干内容" />
+        </el-form-item>
+        <el-form-item label="题目图片">
+          <div class="image-uploader">
+            <div v-if="form.imageUrls.length" class="image-uploader__list">
+              <div v-for="(url, index) in form.imageUrls" :key="`${index}-${url.slice(0, 32)}`" class="image-uploader__item">
+                <el-image :src="url" fit="cover" :preview-src-list="form.imageUrls" :initial-index="index" preview-teleported />
+                <el-button type="danger" plain @click="removeImage(index)">删除</el-button>
+              </div>
+            </div>
+            <el-upload
+              action="#"
+              accept="image/*"
+              :auto-upload="false"
+              :show-file-list="false"
+              :on-change="handleImageUpload"
+            >
+              <el-button type="primary" plain :loading="imageUploading">上传图片</el-button>
+            </el-upload>
+          </div>
         </el-form-item>
 
         <template v-if="needsOptions">
@@ -162,27 +194,31 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type UploadFile } from 'element-plus'
 
 import { deleteQuestionApi, getQuestionPageApi, saveQuestionApi } from '@/api/modules/question'
+import { uploadToUpyunApi } from '@/api/modules/upload'
 import PageContainer from '@/components/common/PageContainer.vue'
 import QuestionRenderer from '@/components/common/QuestionRenderer.vue'
 import QueryBar from '@/components/form/QueryBar.vue'
 import CommonPagination from '@/components/table/CommonPagination.vue'
 import CommonTable from '@/components/table/CommonTable.vue'
 import { usePagination } from '@/hooks/usePagination'
-import { DIFFICULTY_OPTIONS, QUESTION_TYPE_OPTIONS, SUBJECT_OPTIONS } from '@/utils/dicts'
+import { useSubjects } from '@/hooks/useSubjects'
+import { DIFFICULTY_OPTIONS, QUESTION_TYPE_OPTIONS } from '@/utils/dicts'
 import { formatDateTime } from '@/utils/format'
 import type { QuestionRecord } from '@/types'
 
 const loading = ref(false)
 const submitLoading = ref(false)
+const imageUploading = ref(false)
 const dialogVisible = ref(false)
 const detailVisible = ref(false)
 const formRef = ref<FormInstance>()
 const tableData = ref<QuestionRecord[]>([])
 const currentRow = ref<QuestionRecord>()
 const { pagination, updatePagination } = usePagination()
+const { subjectOptions, loadSubjects } = useSubjects()
 
 const queryForm = reactive({
   keyword: '',
@@ -196,6 +232,7 @@ const initialForm = () => ({
   subjectId: 1,
   questionType: 'SINGLE_CHOICE',
   title: '',
+  imageUrls: [] as string[],
   options: ['选项A', '选项B'],
   answers: [] as string[],
   analysis: '',
@@ -286,8 +323,38 @@ function handleAnswerInput(value: string) {
     .filter(Boolean)
 }
 
+async function handleImageUpload(file: UploadFile) {
+  const rawFile = file.raw
+  if (!rawFile) {
+    return
+  }
+  if (!rawFile.type.startsWith('image/')) {
+    ElMessage.warning('只能上传图片文件')
+    return
+  }
+  if (rawFile.size > 2 * 1024 * 1024) {
+    ElMessage.warning('单张图片不能超过 2MB')
+    return
+  }
+  imageUploading.value = true
+  try {
+    const imageUrl = await uploadToUpyunApi(rawFile)
+    form.imageUrls.push(imageUrl)
+    ElMessage.success('图片上传成功')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '图片上传失败')
+  } finally {
+    imageUploading.value = false
+  }
+}
+
+function removeImage(index: number) {
+  form.imageUrls.splice(index, 1)
+}
+
 function openDialog(row?: QuestionRecord) {
   Object.assign(form, initialForm(), row || {})
+  form.imageUrls = [...(row?.imageUrls || [])]
   singleAnswer.value = row?.answers?.[0] || ''
   dialogVisible.value = true
 }
@@ -327,6 +394,7 @@ function handlePageChange(pageNum: number, pageSize: number) {
 }
 
 onMounted(() => {
+  loadSubjects()
   loadData()
 })
 </script>
@@ -346,5 +414,41 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 12px;
+}
+
+.question-thumb {
+  width: 46px;
+  height: 46px;
+  border: 1px solid $app-border-color;
+  border-radius: 6px;
+}
+
+.empty-text {
+  color: $app-sub-text-color;
+}
+
+.image-uploader {
+  display: grid;
+  width: 100%;
+  gap: 12px;
+}
+
+.image-uploader__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.image-uploader__item {
+  display: grid;
+  gap: 8px;
+}
+
+.image-uploader__item :deep(.el-image) {
+  width: 100%;
+  height: 110px;
+  border: 1px solid $app-border-color;
+  border-radius: 8px;
+  background: #f8fafc;
 }
 </style>

@@ -50,11 +50,21 @@ export interface UserRecord {
   createTime?: string
 }
 
+export interface SubjectRecord {
+  id?: number
+  subjectCode: string
+  subjectName: string
+  description?: string
+  status: number
+  createTime?: string
+}
+
 export interface QuestionRecord {
   id?: number
   subjectId: number
   questionType: string
   title: string
+  imageUrls?: string[]
   options?: string[]
   answers: string[]
   studentAnswers?: string[]
@@ -76,6 +86,7 @@ export interface PaperQuestionRecord {
   sortNo: number
   title?: string
   questionType?: string
+  imageUrls?: string[]
   options?: string[]
   answers?: string[]
   analysis?: string
@@ -126,6 +137,7 @@ export interface AnswerRecord {
   questionId: number
   questionType: string
   title: string
+  imageUrls?: string[]
   options?: string[]
   standardAnswers?: string[]
   studentAnswers?: string[]

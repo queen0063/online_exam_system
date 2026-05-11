@@ -16,6 +16,7 @@ public class PaperQuestionVO {
     private Integer sortNo;
     private String questionType;
     private String title;
+    private List<String> imageUrls;
     private List<String> options;
     private List<String> answers;
     private String analysis;

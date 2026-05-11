@@ -6,7 +6,7 @@
         <p>{{ paperDetail?.description || '暂无试卷说明' }}</p>
       </div>
       <el-descriptions :column="3" border>
-        <el-descriptions-item label="科目">{{ subjectLabel }}</el-descriptions-item>
+        <el-descriptions-item label="科目">{{ subjectName }}</el-descriptions-item>
         <el-descriptions-item label="时长">{{ paperDetail?.durationMinutes || 0 }} 分钟</el-descriptions-item>
         <el-descriptions-item label="总分">{{ totalScore }} 分</el-descriptions-item>
       </el-descriptions>
@@ -18,6 +18,7 @@
           :question="{
             questionType: item.questionType,
             title: item.title,
+            imageUrls: item.imageUrls,
             options: item.options,
             answers: item.answers,
             analysis: item.analysis,
@@ -40,13 +41,14 @@ import { useRoute } from 'vue-router'
 import { previewPaperApi } from '@/api/modules/paper'
 import PageContainer from '@/components/common/PageContainer.vue'
 import QuestionRenderer from '@/components/common/QuestionRenderer.vue'
-import { SUBJECT_OPTIONS } from '@/utils/dicts'
+import { useSubjects } from '@/hooks/useSubjects'
 import type { PaperRecord } from '@/types'
 
 const route = useRoute()
 const paperDetail = ref<PaperRecord>()
+const { loadSubjects, subjectLabel } = useSubjects()
 
-const subjectLabel = computed(() => SUBJECT_OPTIONS.find((item) => item.value === paperDetail.value?.subjectId)?.label || '-')
+const subjectName = computed(() => subjectLabel(paperDetail.value?.subjectId))
 const totalScore = computed(() => (paperDetail.value?.questions || []).reduce((sum, item) => sum + (item.questionScore || 0), 0))
 
 async function loadData() {
@@ -55,6 +57,7 @@ async function loadData() {
 }
 
 onMounted(() => {
+  loadSubjects()
   loadData()
 })
 </script>

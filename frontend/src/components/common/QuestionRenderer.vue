@@ -6,6 +6,18 @@
       <span class="question-renderer__score">{{ question.questionScore || question.score }} 分</span>
     </div>
 
+    <div v-if="question.imageUrls?.length" class="question-renderer__images">
+      <el-image
+        v-for="(url, imageIndex) in question.imageUrls"
+        :key="`${imageIndex}-${url.slice(0, 32)}`"
+        :src="url"
+        :preview-src-list="question.imageUrls"
+        :initial-index="imageIndex"
+        fit="contain"
+        preview-teleported
+      />
+    </div>
+
     <div v-if="question.questionType === 'SINGLE_CHOICE'" class="question-renderer__body">
       <el-radio-group :model-value="singleValue" :disabled="readonly" @update:model-value="onSingleChange">
         <el-radio v-for="option in question.options || []" :key="option" :label="option">{{ option }}</el-radio>
@@ -132,6 +144,20 @@ function onInputChange(value: string) {
 .question-renderer__score {
   color: $app-warning;
   font-weight: 700;
+}
+
+.question-renderer__images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.question-renderer__images :deep(.el-image) {
+  width: 100%;
+  height: 150px;
+  border: 1px solid $app-border-color;
+  border-radius: 8px;
+  background: #f8fafc;
 }
 
 .question-renderer__analysis {

@@ -23,6 +23,8 @@ public class QuestionSaveDTO {
     @NotBlank(message = "题干不能为空")
     private String title;
 
+    private List<String> imageUrls;
+
     private List<String> options;
 
     @NotEmpty(message = "答案不能为空")

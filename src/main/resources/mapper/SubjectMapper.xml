@@ -10,4 +10,43 @@
         where deleted = 0
         order by id asc
     </select>
+
+    <select id="selectById" resultType="com.exam.entity.Subject">
+        select id, subject_code, subject_name, description, status, create_time, update_time, deleted
+        from subject
+        where id = #{id}
+          and deleted = 0
+    </select>
+
+    <select id="selectByCode" resultType="com.exam.entity.Subject">
+        select id, subject_code, subject_name, description, status, create_time, update_time, deleted
+        from subject
+        where subject_code = #{subjectCode}
+          and deleted = 0
+        limit 1
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        insert into subject(subject_code, subject_name, description, status, create_time, update_time, deleted)
+        values (#{subjectCode}, #{subjectName}, #{description}, #{status}, #{createTime}, #{updateTime}, #{deleted})
+    </insert>
+
+    <update id="updateById">
+        update subject
+        set subject_code = #{subjectCode},
+            subject_name = #{subjectName},
+            description = #{description},
+            status = #{status},
+            update_time = #{updateTime}
+        where id = #{id}
+          and deleted = 0
+    </update>
+
+    <update id="logicDeleteById">
+        update subject
+        set deleted = 1,
+            update_time = now()
+        where id = #{id}
+          and deleted = 0
+    </update>
 </mapper>

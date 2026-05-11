@@ -77,6 +77,7 @@ public class MarkingServiceImpl implements MarkingService {
                             .questionId(answer.getQuestionId())
                             .questionType(question.getQuestionType())
                             .title(question.getTitle())
+                            .imageUrls(JsonUtils.toStringList(question.getImageJson()))
                             .options(JsonUtils.toStringList(question.getOptionsJson()))
                             .standardAnswers(JsonUtils.toStringList(question.getAnswerJson()))
                             .studentAnswers(JsonUtils.toStringList(answer.getAnswerContent()))

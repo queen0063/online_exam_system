@@ -68,7 +68,7 @@
           </el-form-item>
           <el-form-item label="科目" prop="subjectId">
             <el-select v-model="form.subjectId" class="w-full">
-              <el-option v-for="item in SUBJECT_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+              <el-option v-for="item in subjectOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
           <el-form-item label="考试时长" prop="durationMinutes">
@@ -123,7 +123,8 @@ import QueryBar from '@/components/form/QueryBar.vue'
 import CommonPagination from '@/components/table/CommonPagination.vue'
 import CommonTable from '@/components/table/CommonTable.vue'
 import { usePagination } from '@/hooks/usePagination'
-import { EXAM_STATUS_OPTIONS, SUBJECT_OPTIONS } from '@/utils/dicts'
+import { useSubjects } from '@/hooks/useSubjects'
+import { EXAM_STATUS_OPTIONS } from '@/utils/dicts'
 import { formatDateTime } from '@/utils/format'
 import type { ExamRecord, PaperRecord } from '@/types'
 
@@ -142,6 +143,7 @@ const tableData = ref<ExamRecord[]>([])
 const paperOptions = ref<PaperRecord[]>([])
 const currentRow = ref<ExamRecord>()
 const { pagination, updatePagination } = usePagination()
+const { subjectOptions, loadSubjects } = useSubjects()
 
 const studentOptions = [
   { label: '学生一（ID:3）', value: 3 },
@@ -280,7 +282,7 @@ function handlePageChange(pageNum: number, pageSize: number) {
 }
 
 onMounted(async () => {
-  await Promise.all([loadPaperOptions(), loadData()])
+  await Promise.all([loadSubjects(), loadPaperOptions(), loadData()])
 })
 </script>
 

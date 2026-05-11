@@ -5,6 +5,7 @@ target/
 !**/src/test/**/target/
 
 ### CUSTOM ###
+application.yml
 application-prod.yml
 
 ### STS ###

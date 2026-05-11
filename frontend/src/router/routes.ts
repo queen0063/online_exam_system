@@ -67,6 +67,12 @@ export const asyncRoutes: AppRouteRecordRaw[] = [
         name: 'RoleManagement',
         component: () => import('@/views/system/roles.vue'),
         meta: { title: '角色管理', icon: 'Avatar' }
+      },
+      {
+        path: 'subjects',
+        name: 'SubjectManagement',
+        component: () => import('@/views/system/subjects.vue'),
+        meta: { title: '科目管理', icon: 'Reading' }
       }
     ]
   },

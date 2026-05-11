@@ -72,7 +72,11 @@
             and es.exam_id = #{query.examId}
         </if>
         <if test="query.keyword != null and query.keyword != ''">
-            and (u.real_name like concat('%', #{query.keyword}, '%') or u.username like concat('%', #{query.keyword}, '%'))
+            and (
+                e.exam_name like concat('%', #{query.keyword}, '%')
+                or u.real_name like concat('%', #{query.keyword}, '%')
+                or u.username like concat('%', #{query.keyword}, '%')
+            )
         </if>
         <if test="!admin">
             and e.creator_id = #{teacherId}
@@ -91,7 +95,11 @@
             and es.exam_id = #{query.examId}
         </if>
         <if test="query.keyword != null and query.keyword != ''">
-            and (u.real_name like concat('%', #{query.keyword}, '%') or u.username like concat('%', #{query.keyword}, '%'))
+            and (
+                e.exam_name like concat('%', #{query.keyword}, '%')
+                or u.real_name like concat('%', #{query.keyword}, '%')
+                or u.username like concat('%', #{query.keyword}, '%')
+            )
         </if>
         <if test="!admin">
             and e.creator_id = #{teacherId}
@@ -122,6 +130,13 @@
         <if test="query.examId != null">
             and es.exam_id = #{query.examId}
         </if>
+        <if test="query.keyword != null and query.keyword != ''">
+            and (
+                e.exam_name like concat('%', #{query.keyword}, '%')
+                or u.real_name like concat('%', #{query.keyword}, '%')
+                or u.username like concat('%', #{query.keyword}, '%')
+            )
+        </if>
         order by es.id desc
         limit #{offset}, #{query.pageSize}
     </select>
@@ -135,6 +150,9 @@
           and e.result_published = 1
         <if test="query.examId != null">
             and es.exam_id = #{query.examId}
+        </if>
+        <if test="query.keyword != null and query.keyword != ''">
+            and e.exam_name like concat('%', #{query.keyword}, '%')
         </if>
     </select>
 

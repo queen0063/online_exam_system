@@ -7,7 +7,7 @@
         </el-form-item>
         <el-form-item label="科目">
           <el-select v-model="queryForm.subjectId" clearable placeholder="全部科目" style="width: 160px">
-            <el-option v-for="item in SUBJECT_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+            <el-option v-for="item in subjectOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -65,7 +65,7 @@
           </el-form-item>
           <el-form-item label="所属科目" prop="subjectId">
             <el-select v-model="form.subjectId" class="w-full">
-              <el-option v-for="item in SUBJECT_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+              <el-option v-for="item in subjectOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
           <el-form-item label="组卷方式" prop="generateType">
@@ -129,7 +129,7 @@
                 <el-table-column label="科目" min-width="140">
                   <template #default="{ row }">
                     <el-select v-model="row.subjectId" class="w-full">
-                      <el-option v-for="item in SUBJECT_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+                      <el-option v-for="item in subjectOptions" :key="item.value" :label="item.label" :value="item.value" />
                     </el-select>
                   </template>
                 </el-table-column>
@@ -193,7 +193,8 @@ import QueryBar from '@/components/form/QueryBar.vue'
 import CommonPagination from '@/components/table/CommonPagination.vue'
 import CommonTable from '@/components/table/CommonTable.vue'
 import { usePagination } from '@/hooks/usePagination'
-import { DIFFICULTY_OPTIONS, QUESTION_TYPE_OPTIONS, SUBJECT_OPTIONS } from '@/utils/dicts'
+import { useSubjects } from '@/hooks/useSubjects'
+import { DIFFICULTY_OPTIONS, QUESTION_TYPE_OPTIONS } from '@/utils/dicts'
 import { formatDateTime } from '@/utils/format'
 import type { PaperRecord, QuestionRecord, RandomRuleRecord } from '@/types'
 
@@ -207,6 +208,7 @@ const questionOptions = ref<QuestionRecord[]>([])
 const selectedQuestionIds = ref<number[]>([])
 const questionScoreMap = reactive<Record<number, number>>({})
 const { pagination, updatePagination } = usePagination()
+const { subjectOptions, loadSubjects } = useSubjects()
 
 const queryForm = reactive({
   paperName: '',
@@ -371,7 +373,7 @@ function handlePageChange(pageNum: number, pageSize: number) {
 }
 
 onMounted(async () => {
-  await Promise.all([loadData(), loadQuestionOptions()])
+  await Promise.all([loadSubjects(), loadData(), loadQuestionOptions()])
 })
 </script>
 

@@ -49,6 +49,7 @@ public class QuestionServiceImpl implements QuestionService {
         question.setSubjectId(questionSaveDTO.getSubjectId());
         question.setQuestionType(questionSaveDTO.getQuestionType());
         question.setTitle(questionSaveDTO.getTitle());
+        question.setImageJson(questionSaveDTO.getImageUrls() == null ? "[]" : JsonUtils.toJson(questionSaveDTO.getImageUrls()));
         question.setOptionsJson(JsonUtils.toJson(questionSaveDTO.getOptions()));
         question.setAnswerJson(JsonUtils.toJson(questionSaveDTO.getAnswers()));
         question.setAnalysis(questionSaveDTO.getAnalysis());
