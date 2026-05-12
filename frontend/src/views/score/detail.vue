@@ -23,19 +23,18 @@
       </div>
       <div class="app-card summary-grid__item">
         <span>发布状态</span>
-        <strong>{{ detail?.scoreStatus || '-' }}</strong>
+        <status-tag :value="detail?.scoreStatus" :map="scoreStatusMap" />
       </div>
     </div>
 
     <div class="two-column">
       <chart-card title="成绩构成" description="客观题与主观题占比" :option="scoreOption" />
-      <chart-card v-if="!isStudent" title="全体排名" description="当前考试排名前十" :option="rankingOption" />
     </div>
 
-    <div v-if="isStudent" class="app-card answer-list">
+    <div class="app-card answer-list">
       <div class="answer-list__header">
-        <h3>我的答题详情</h3>
-        <el-button type="primary" plain @click="$router.push('/question/wrong')">查看错题本</el-button>
+        <h3>{{ isStudent ? '我的答题详情' : '学生答题详情' }}</h3>
+        <el-button v-if="isStudent" type="primary" plain @click="$router.push('/question/wrong')">查看错题本</el-button>
       </div>
       <div v-if="answerList.length === 0" class="page-empty">
         <el-empty description="暂无答题详情" />
@@ -54,17 +53,6 @@
         />
       </div>
     </div>
-
-    <div v-else class="app-card table-wrapper">
-      <common-table :data="ranking">
-        <el-table-column prop="rankNo" label="排名" width="80" />
-        <el-table-column prop="studentName" label="学生" min-width="140" />
-        <el-table-column prop="totalScore" label="总分" width="90" />
-        <el-table-column prop="objectiveScore" label="客观题" width="90" />
-        <el-table-column prop="subjectiveScore" label="主观题" width="90" />
-        <el-table-column prop="scoreStatus" label="状态" width="120" />
-      </common-table>
-    </div>
   </page-container>
 </template>
 
@@ -74,20 +62,25 @@ import { useRoute } from 'vue-router'
 import type { EChartsOption } from 'echarts'
 
 import { getAnswerDetailApi } from '@/api/modules/answer'
-import { getScoreDetailApi, getScoreRankingApi } from '@/api/modules/score'
+import { getMarkingDetailApi } from '@/api/modules/marking'
+import { getScoreDetailApi } from '@/api/modules/score'
 import ChartCard from '@/components/chart/ChartCard.vue'
 import PageContainer from '@/components/common/PageContainer.vue'
 import QuestionRenderer from '@/components/common/QuestionRenderer.vue'
-import CommonTable from '@/components/table/CommonTable.vue'
+import StatusTag from '@/components/common/StatusTag.vue'
 import { useUserStore } from '@/stores/user'
+import { SCORE_STATUS_OPTIONS } from '@/utils/dicts'
 import type { AnswerRecord, ScoreRecord } from '@/types'
 
 const route = useRoute()
 const userStore = useUserStore()
 
 const detail = ref<ScoreRecord>()
-const ranking = ref<ScoreRecord[]>([])
 const answerList = ref<AnswerRecord[]>([])
+const scoreStatusMap = SCORE_STATUS_OPTIONS.reduce<Record<string, string>>((map, item) => {
+  map[item.value] = item.label
+  return map
+}, {})
 
 const examId = computed(() => Number(route.params.examId))
 const queryStudentId = computed(() => {
@@ -110,36 +103,9 @@ const scoreOption = computed<EChartsOption>(() => ({
   ]
 }))
 
-const rankingOption = computed<EChartsOption>(() => ({
-  tooltip: { trigger: 'axis' },
-  grid: { left: 26, right: 20, top: 30, bottom: 24 },
-  xAxis: {
-    type: 'category',
-    axisLabel: { interval: 0, rotate: 25 },
-    data: ranking.value.slice(0, 10).map((item) => item.studentName || `学生${item.studentId}`)
-  },
-  yAxis: { type: 'value' },
-  series: [
-    {
-      type: 'bar',
-      data: ranking.value.slice(0, 10).map((item) => item.totalScore || 0),
-      itemStyle: {
-        color: '#2563eb',
-        borderRadius: [8, 8, 0, 0]
-      }
-    }
-  ]
-}))
-
 async function loadData() {
   const detailResult = await getScoreDetailApi(examId.value, isStudent.value ? undefined : queryStudentId.value)
   detail.value = detailResult.data
-  if (!isStudent.value) {
-    const rankingResult = await getScoreRankingApi(examId.value)
-    ranking.value = rankingResult.data
-  } else {
-    ranking.value = []
-  }
 
   if (isStudent.value) {
     try {
@@ -148,6 +114,14 @@ async function loadData() {
     } catch {
       answerList.value = []
     }
+    return
+  }
+
+  if (queryStudentId.value) {
+    const markingResult = await getMarkingDetailApi(examId.value, queryStudentId.value)
+    answerList.value = markingResult.data.answers || []
+  } else {
+    answerList.value = []
   }
 }
 

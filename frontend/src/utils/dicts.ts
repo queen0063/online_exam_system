@@ -38,6 +38,13 @@ export const EXAM_STATUS_OPTIONS = [
   { label: '已发布成绩', value: 'RESULT_PUBLISHED' }
 ]
 
+export const SCORE_STATUS_OPTIONS = [
+  { label: '答题中', value: 'ANSWERING' },
+  { label: '已提交', value: 'SUBMITTED' },
+  { label: '待阅卷', value: 'WAIT_MARKING' },
+  { label: '已阅卷', value: 'MARKED' }
+]
+
 export const NOTICE_STATUS_OPTIONS = [
   { label: '草稿', value: 'DRAFT' },
   { label: '已发布', value: 'PUBLISHED' }

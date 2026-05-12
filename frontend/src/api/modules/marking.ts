@@ -1,7 +1,7 @@
 import request from '@/utils/request'
 import type { MarkingRecord, PageResult } from '@/types'
 
-export function getPendingMarkingApi(params: { pageNum?: number; pageSize?: number }) {
+export function getPendingMarkingApi(params: { pageNum?: number; pageSize?: number; examId?: number }) {
   return request.get<PageResult<MarkingRecord>, { data: PageResult<MarkingRecord> }>('/marking/pending', { params })
 }
 

@@ -31,11 +31,14 @@
                  inner join sys_user u on es.student_id = u.id and u.deleted = 0
         where es.deleted = 0
           and es.score_status = 'WAIT_MARKING'
+        <if test="query.examId != null">
+            and es.exam_id = #{query.examId}
+        </if>
         <if test="!admin">
             and e.creator_id = #{teacherId}
         </if>
         order by es.submit_time asc, es.id asc
-        limit #{offset}, #{pageSize}
+        limit #{offset}, #{query.pageSize}
     </select>
 
     <select id="countPendingMarking" resultType="long">
@@ -44,6 +47,9 @@
                  inner join exam e on es.exam_id = e.id and e.deleted = 0
         where es.deleted = 0
           and es.score_status = 'WAIT_MARKING'
+        <if test="query.examId != null">
+            and es.exam_id = #{query.examId}
+        </if>
         <if test="!admin">
             and e.creator_id = #{teacherId}
         </if>

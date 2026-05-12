@@ -61,12 +61,14 @@ import AnswerSheet from '@/components/common/AnswerSheet.vue'
 import PageContainer from '@/components/common/PageContainer.vue'
 import QuestionRenderer from '@/components/common/QuestionRenderer.vue'
 import { useAnswerStore } from '@/stores/answer'
+import { useUserStore } from '@/stores/user'
 import { formatDateTime, secondsToClock } from '@/utils/format'
 import type { AnswerRecord, ExamRecord } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
 const answerStore = useAnswerStore()
+const userStore = useUserStore()
 
 const examId = Number(route.params.examId)
 const examDetail = ref<ExamRecord>()
@@ -128,7 +130,7 @@ async function finishExam(successMessage: string, failureMessage: string) {
     examFinished.value = true
     clearTimer()
     detachExamGuard()
-    answerStore.clearExamAnswers(examId)
+    answerStore.clearExamAnswers(examId, userStore.userInfo?.userId || 0)
     ElMessage.success(successMessage)
     await router.replace('/student/my-exams')
   } catch (error) {
@@ -164,7 +166,13 @@ function syncCountdown() {
 }
 
 async function loadData() {
-  answerStore.setCurrentExam(examId)
+  const userId = userStore.userInfo?.userId
+  if (!userId) {
+    ElMessage.error('当前登录状态无效，请重新登录')
+    await router.replace('/login')
+    return
+  }
+  answerStore.setCurrentExam(examId, userId)
   const examResult = await getAnswerExamDetailApi(examId)
   examDetail.value = examResult.data
   questions.value = examResult.data.questions || []

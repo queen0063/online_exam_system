@@ -6,7 +6,7 @@ import com.exam.common.enums.ExamStatusEnum;
 import com.exam.common.exception.BusinessException;
 import com.exam.common.result.PageResult;
 import com.exam.common.util.JsonUtils;
-import com.exam.dto.common.PageQueryDTO;
+import com.exam.dto.marking.MarkingQueryDTO;
 import com.exam.dto.marking.MarkingScoreDTO;
 import com.exam.entity.Exam;
 import com.exam.entity.ExamScore;
@@ -56,13 +56,13 @@ public class MarkingServiceImpl implements MarkingService {
     }
 
     @Override
-    public PageResult<MarkingVO> pendingPage(PageQueryDTO pageQueryDTO) {
-        int offset = (pageQueryDTO.getPageNum() - 1) * pageQueryDTO.getPageSize();
+    public PageResult<MarkingVO> pendingPage(MarkingQueryDTO queryDTO) {
+        int offset = (queryDTO.getPageNum() - 1) * queryDTO.getPageSize();
         boolean admin = SecurityContextUtils.hasAnyRole("ADMIN");
         List<MarkingVO> records =
-                examScoreMapper.selectPendingMarkingPage(SecurityContextUtils.getUserId(), offset, pageQueryDTO.getPageSize(), admin);
-        Long total = examScoreMapper.countPendingMarking(SecurityContextUtils.getUserId(), admin);
-        return new PageResult<>(records, total, pageQueryDTO.getPageNum(), pageQueryDTO.getPageSize());
+                examScoreMapper.selectPendingMarkingPage(queryDTO, SecurityContextUtils.getUserId(), offset, admin);
+        Long total = examScoreMapper.countPendingMarking(queryDTO, SecurityContextUtils.getUserId(), admin);
+        return new PageResult<>(records, total, queryDTO.getPageNum(), queryDTO.getPageSize());
     }
 
     @Override
@@ -124,6 +124,7 @@ public class MarkingServiceImpl implements MarkingService {
         answer.setMarkingStatus(AnswerStatusEnum.MARKED.name());
         answer.setUpdateTime(LocalDateTime.now());
         studentAnswerMapper.updateById(answer);
+        refreshExamScore(exam, answer.getStudentId());
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -159,6 +160,38 @@ public class MarkingServiceImpl implements MarkingService {
         examStudentMapper.updateAnswerStatus(examId, studentId, AnswerStatusEnum.MARKED.name(), LocalDateTime.now());
         examMapper.updateById(buildGradedExam(exam));
         examScoreMapper.updateRankByExamId(examId);
+    }
+
+    private void refreshExamScore(Exam exam, Long studentId) {
+        List<StudentAnswer> answers = studentAnswerMapper.selectByExamIdAndStudentId(exam.getId(), studentId);
+        if (answers.isEmpty()) {
+            return;
+        }
+        int objectiveScore = 0;
+        int subjectiveScore = 0;
+        for (StudentAnswer answer : answers) {
+            int actualScore = answer.getActualScore() == null ? 0 : answer.getActualScore();
+            if (answer.getObjectiveFlag() != null && answer.getObjectiveFlag() == 1) {
+                objectiveScore += actualScore;
+            } else {
+                subjectiveScore += actualScore;
+            }
+        }
+        int totalScore = objectiveScore + subjectiveScore;
+        ExamScore examScore = examScoreMapper.selectByExamIdAndStudentId(exam.getId(), studentId);
+        if (examScore == null) {
+            return;
+        }
+        examScore.setObjectiveScore(objectiveScore);
+        examScore.setSubjectiveScore(subjectiveScore);
+        examScore.setTotalScore(totalScore);
+        examScore.setPassFlag(totalScore >= exam.getPassScore() ? 1 : 0);
+        examScore.setExcellentFlag(totalScore >= 90 ? 1 : 0);
+        if (!AnswerStatusEnum.MARKED.name().equals(examScore.getScoreStatus())) {
+            examScore.setScoreStatus(AnswerStatusEnum.WAIT_MARKING.name());
+        }
+        examScore.setUpdateTime(LocalDateTime.now());
+        examScoreMapper.updateById(examScore);
     }
 
     private Exam getOwnedExam(Long examId) {

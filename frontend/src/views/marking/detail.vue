@@ -4,7 +4,7 @@
       <el-descriptions :column="3" border>
         <el-descriptions-item label="考试名称">{{ detail?.examName }}</el-descriptions-item>
         <el-descriptions-item label="学生">{{ detail?.studentName }}</el-descriptions-item>
-        <el-descriptions-item label="当前总分">{{ detail?.totalScore ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="当前总分">{{ currentTotalScore }}</el-descriptions-item>
       </el-descriptions>
     </div>
 
@@ -39,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
@@ -53,6 +53,11 @@ const router = useRouter()
 const detail = ref<MarkingRecord>()
 const scoreMap = reactive<Record<number, number>>({})
 const commentMap = reactive<Record<number, string>>({})
+const currentTotalScore = computed(() => {
+  return (detail.value?.answers || []).reduce((total, item) => {
+    return total + (scoreMap[item.id] ?? item.actualScore ?? 0)
+  }, 0)
+})
 
 async function loadData() {
   const result = await getMarkingDetailApi(Number(route.params.examId), Number(route.params.studentId))
@@ -68,6 +73,11 @@ async function handleMark(answerId: number) {
     actualScore: scoreMap[answerId] || 0,
     teacherComment: commentMap[answerId]
   })
+  const answer = detail.value?.answers.find((item) => item.id === answerId)
+  if (answer) {
+    answer.actualScore = scoreMap[answerId] || 0
+    answer.teacherComment = commentMap[answerId]
+  }
   ElMessage.success('单题评分已保存')
 }
 

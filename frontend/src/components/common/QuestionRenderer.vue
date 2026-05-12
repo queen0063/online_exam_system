@@ -2,7 +2,10 @@
   <div class="question-renderer">
     <div class="question-renderer__header">
       <span class="question-renderer__type">{{ typeLabel }}</span>
-      <h3>{{ index + 1 }}. {{ question.title }}</h3>
+      <h3 class="question-renderer__title">
+        <span class="question-renderer__index">{{ index + 1 }}.</span>
+        <span class="question-renderer__title-text">{{ question.title }}</span>
+      </h3>
       <span class="question-renderer__score">{{ question.questionScore || question.score }} 分</span>
     </div>
 
@@ -127,10 +130,24 @@ function onInputChange(value: string) {
   flex-wrap: wrap;
 }
 
-.question-renderer__header h3 {
+.question-renderer__title {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   margin: 0;
   flex: 1;
+  min-width: 240px;
   font-size: 18px;
+  line-height: 1.75;
+}
+
+.question-renderer__index {
+  flex: 0 0 auto;
+}
+
+.question-renderer__title-text {
+  white-space: pre-line;
+  word-break: break-word;
 }
 
 .question-renderer__type {
