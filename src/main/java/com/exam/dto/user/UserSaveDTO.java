@@ -19,6 +19,8 @@ public class UserSaveDTO {
 
     private String password;
 
+    private String studentNo;
+
     @NotBlank(message = "姓名不能为空")
     private String realName;
 

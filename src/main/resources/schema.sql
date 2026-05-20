@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS sys_user
     id          BIGINT PRIMARY KEY AUTO_INCREMENT,
     username    VARCHAR(64)  NOT NULL,
     password    VARCHAR(255) NOT NULL,
+    student_no  VARCHAR(32),
     real_name   VARCHAR(64)  NOT NULL,
     phone       VARCHAR(32),
     email       VARCHAR(128),
@@ -18,6 +19,7 @@ CREATE TABLE IF NOT EXISTS sys_user
     update_time DATETIME     NOT NULL,
     deleted     INT          NOT NULL DEFAULT 0,
     UNIQUE KEY uk_sys_user_username (username),
+    UNIQUE KEY uk_sys_user_student_no (student_no),
     KEY idx_sys_user_class_id (class_id),
     KEY idx_sys_user_status (status)
 );

@@ -10,4 +10,15 @@
         where deleted = 0
         order by id asc
     </select>
+
+    <select id="selectVisible" resultType="com.exam.entity.ClassInfo">
+        select id, class_code, class_name, grade_name, teacher_id, status, create_time, update_time, deleted
+        from class_info
+        where deleted = 0
+          and status = 1
+        <if test="admin == false">
+            and teacher_id = #{teacherId}
+        </if>
+        order by id asc
+    </select>
 </mapper>

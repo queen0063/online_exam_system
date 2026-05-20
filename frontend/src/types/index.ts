@@ -41,12 +41,23 @@ export interface LoginResult {
 export interface UserRecord {
   id: number
   username: string
+  studentNo?: string
   realName: string
   phone?: string
   email?: string
   classId?: number
   status: number
   roles: RoleItem[]
+  createTime?: string
+}
+
+export interface ClassInfoRecord {
+  id: number
+  classCode: string
+  className: string
+  gradeName?: string
+  teacherId?: number
+  status: number
   createTime?: string
 }
 

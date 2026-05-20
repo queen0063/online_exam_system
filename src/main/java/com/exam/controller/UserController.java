@@ -11,6 +11,7 @@ import com.exam.dto.user.UserSaveDTO;
 import com.exam.service.UserService;
 import com.exam.vo.user.UserVO;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,6 +45,12 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     public Result<UserVO> detail(@PathVariable Long id) {
         return Result.success(userService.detail(id));
+    }
+
+    @GetMapping("/students")
+    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
+    public Result<List<UserVO>> students(UserQueryDTO queryDTO) {
+        return Result.success(userService.students(queryDTO));
     }
 
     @PostMapping

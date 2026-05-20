@@ -3,7 +3,12 @@
     <query-bar>
       <el-form :model="queryForm" inline>
         <el-form-item label="关键字">
-          <el-input v-model="queryForm.keyword" placeholder="用户名 / 姓名" clearable />
+          <el-input v-model="queryForm.keyword" placeholder="用户名 / 姓名 / 学号" clearable />
+        </el-form-item>
+        <el-form-item label="班级">
+          <el-select v-model="queryForm.classId" placeholder="全部班级" clearable style="width: 180px">
+            <el-option v-for="item in classOptions" :key="item.id" :label="classLabel(item)" :value="item.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="角色">
           <el-select v-model="queryForm.roleId" placeholder="全部角色" clearable style="width: 180px">
@@ -28,7 +33,13 @@
       <common-table v-loading="loading" :data="tableData">
         <el-table-column type="index" label="#" width="60" />
         <el-table-column prop="username" label="用户名" min-width="140" />
+        <el-table-column prop="studentNo" label="学号" min-width="120">
+          <template #default="{ row }">{{ row.studentNo || '-' }}</template>
+        </el-table-column>
         <el-table-column prop="realName" label="姓名" min-width="120" />
+        <el-table-column label="班级" min-width="160">
+          <template #default="{ row }">{{ className(row.classId) }}</template>
+        </el-table-column>
         <el-table-column prop="phone" label="手机号" min-width="140" />
         <el-table-column prop="email" label="邮箱" min-width="180" />
         <el-table-column label="角色" min-width="180">
@@ -79,6 +90,14 @@
           <el-form-item label="姓名" prop="realName">
             <el-input v-model="form.realName" placeholder="请输入姓名" />
           </el-form-item>
+          <el-form-item label="学号">
+            <el-input v-model="form.studentNo" placeholder="学生账号可填写学号" />
+          </el-form-item>
+          <el-form-item label="班级">
+            <el-select v-model="form.classId" clearable class="w-full" placeholder="请选择班级">
+              <el-option v-for="item in classOptions" :key="item.id" :label="classLabel(item)" :value="item.id" />
+            </el-select>
+          </el-form-item>
           <el-form-item label="手机号">
             <el-input v-model="form.phone" placeholder="请输入手机号" />
           </el-form-item>
@@ -107,7 +126,9 @@
     <el-drawer v-model="detailVisible" title="用户详情" size="420px">
       <el-descriptions :column="1" border>
         <el-descriptions-item label="用户名">{{ currentRow?.username }}</el-descriptions-item>
+        <el-descriptions-item label="学号">{{ currentRow?.studentNo || '-' }}</el-descriptions-item>
         <el-descriptions-item label="姓名">{{ currentRow?.realName }}</el-descriptions-item>
+        <el-descriptions-item label="班级">{{ className(currentRow?.classId) }}</el-descriptions-item>
         <el-descriptions-item label="手机号">{{ currentRow?.phone || '-' }}</el-descriptions-item>
         <el-descriptions-item label="邮箱">{{ currentRow?.email || '-' }}</el-descriptions-item>
         <el-descriptions-item label="角色">
@@ -123,6 +144,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 
+import { getClassListApi } from '@/api/modules/classInfo'
 import { getRoleListApi } from '@/api/modules/role'
 import { deleteUserApi, getUserPageApi, resetPasswordApi, saveUserApi } from '@/api/modules/user'
 import PageContainer from '@/components/common/PageContainer.vue'
@@ -132,7 +154,7 @@ import CommonPagination from '@/components/table/CommonPagination.vue'
 import CommonTable from '@/components/table/CommonTable.vue'
 import { usePagination } from '@/hooks/usePagination'
 import { formatDateTime } from '@/utils/format'
-import type { RoleItem, UserRecord } from '@/types'
+import type { ClassInfoRecord, RoleItem, UserRecord } from '@/types'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -141,6 +163,7 @@ const detailVisible = ref(false)
 const formRef = ref<FormInstance>()
 const tableData = ref<UserRecord[]>([])
 const roleOptions = ref<RoleItem[]>([])
+const classOptions = ref<ClassInfoRecord[]>([])
 const currentRow = ref<UserRecord>()
 
 const { pagination, updatePagination } = usePagination()
@@ -148,6 +171,7 @@ const { pagination, updatePagination } = usePagination()
 const queryForm = reactive({
   keyword: '',
   roleId: undefined as number | undefined,
+  classId: '' as number | '',
   status: '' as number | ''
 })
 
@@ -155,6 +179,7 @@ const initialForm = () => ({
   id: undefined as number | undefined,
   username: '',
   password: '123456',
+  studentNo: '',
   realName: '',
   phone: '',
   email: '',
@@ -178,6 +203,23 @@ async function loadRoles() {
   roleOptions.value = result.data
 }
 
+async function loadClasses() {
+  const result = await getClassListApi()
+  classOptions.value = result.data
+}
+
+function classLabel(item: ClassInfoRecord) {
+  return item.gradeName ? `${item.gradeName} ${item.className}` : item.className
+}
+
+function className(classId?: number) {
+  if (!classId) {
+    return '-'
+  }
+  const item = classOptions.value.find((classInfo) => classInfo.id === classId)
+  return item ? classLabel(item) : '-'
+}
+
 async function loadData() {
   loading.value = true
   try {
@@ -196,6 +238,7 @@ async function loadData() {
 function resetQuery() {
   queryForm.keyword = ''
   queryForm.roleId = undefined
+  queryForm.classId = ''
   queryForm.status = ''
   pagination.pageNum = 1
   loadData()
@@ -209,6 +252,7 @@ function openDialog(row?: UserRecord) {
       ? {
           id: row.id,
           username: row.username,
+          studentNo: row.studentNo || '',
           realName: row.realName,
           phone: row.phone,
           email: row.email,
@@ -262,7 +306,7 @@ function handlePageChange(pageNum: number, pageSize: number) {
 }
 
 onMounted(async () => {
-  await loadRoles()
+  await Promise.all([loadRoles(), loadClasses()])
   await loadData()
 })
 </script>

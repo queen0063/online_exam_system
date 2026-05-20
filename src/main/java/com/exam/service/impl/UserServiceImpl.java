@@ -62,6 +62,14 @@ public class UserServiceImpl implements UserService {
         return buildUserVO(user);
     }
 
+    @Override
+    public List<UserVO> students(UserQueryDTO queryDTO) {
+        boolean admin = SecurityContextUtils.hasAnyRole("ADMIN");
+        return sysUserMapper.selectStudents(queryDTO, SecurityContextUtils.getUserId(), admin).stream()
+                .map(this::buildUserVO)
+                .toList();
+    }
+
     @Transactional(rollbackFor = Exception.class)
     @Override
     public void save(UserSaveDTO userSaveDTO) {
@@ -70,11 +78,13 @@ public class UserServiceImpl implements UserService {
             if (sysUserMapper.selectByUsername(userSaveDTO.getUsername()) != null) {
                 throw new BusinessException(ResultCode.BAD_REQUEST, "用户名已存在");
             }
+            validateStudentNo(userSaveDTO.getStudentNo(), null);
             SysUser user = new SysUser();
             user.setUsername(userSaveDTO.getUsername());
             user.setPassword(passwordEncoder.encode(StringUtils.hasText(userSaveDTO.getPassword())
                     ? userSaveDTO.getPassword()
                     : SecurityConstants.DEFAULT_PASSWORD));
+            user.setStudentNo(normalizeBlank(userSaveDTO.getStudentNo()));
             user.setRealName(userSaveDTO.getRealName());
             user.setPhone(userSaveDTO.getPhone());
             user.setEmail(userSaveDTO.getEmail());
@@ -93,7 +103,9 @@ public class UserServiceImpl implements UserService {
         if (exists != null && !exists.getId().equals(userSaveDTO.getId())) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "用户名已存在");
         }
+        validateStudentNo(userSaveDTO.getStudentNo(), userSaveDTO.getId());
         dbUser.setUsername(userSaveDTO.getUsername());
+        dbUser.setStudentNo(normalizeBlank(userSaveDTO.getStudentNo()));
         dbUser.setRealName(userSaveDTO.getRealName());
         dbUser.setPhone(userSaveDTO.getPhone());
         dbUser.setEmail(userSaveDTO.getEmail());
@@ -156,6 +168,20 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(ResultCode.NOT_FOUND, "用户不存在");
         }
         return user;
+    }
+
+    private void validateStudentNo(String studentNo, Long currentUserId) {
+        if (!StringUtils.hasText(studentNo)) {
+            return;
+        }
+        SysUser exists = sysUserMapper.selectByStudentNo(studentNo.trim());
+        if (exists != null && !exists.getId().equals(currentUserId)) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "学号已存在");
+        }
+    }
+
+    private String normalizeBlank(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
     }
 
     private UserVO buildUserVO(SysUser user) {

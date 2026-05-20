@@ -86,6 +86,11 @@
             <el-date-picker v-model="form.endTime" type="datetime" class="w-full" value-format="YYYY-MM-DD HH:mm:ss" />
           </el-form-item>
         </div>
+        <el-form-item label="学生班级">
+          <el-select v-model="studentQuery.classId" clearable class="w-full" placeholder="全部可选班级" @change="handleStudentClassChange">
+            <el-option v-for="item in classOptions" :key="item.id" :label="classLabel(item)" :value="item.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="参与学生" prop="studentIds">
           <el-select v-model="form.studentIds" multiple class="w-full" placeholder="请选择学生">
             <el-option v-for="item in studentOptions" :key="item.value" :label="item.label" :value="item.value" />
@@ -115,8 +120,10 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 
+import { getClassListApi } from '@/api/modules/classInfo'
 import { deleteExamApi, getExamDetailApi, getExamPageApi, publishExamApi, publishExamScoreApi, saveExamApi } from '@/api/modules/exam'
 import { getPaperPageApi } from '@/api/modules/paper'
+import { getStudentListApi } from '@/api/modules/user'
 import PageContainer from '@/components/common/PageContainer.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import QueryBar from '@/components/form/QueryBar.vue'
@@ -126,7 +133,7 @@ import { usePagination } from '@/hooks/usePagination'
 import { useSubjects } from '@/hooks/useSubjects'
 import { EXAM_STATUS_OPTIONS } from '@/utils/dicts'
 import { formatDateTime } from '@/utils/format'
-import type { ExamRecord, PaperRecord } from '@/types'
+import type { ClassInfoRecord, ExamRecord, PaperRecord, UserRecord } from '@/types'
 
 const statusMap = EXAM_STATUS_OPTIONS.reduce<Record<string, string>>((map, item) => {
   map[item.value] = item.label
@@ -141,19 +148,19 @@ const detailVisible = ref(false)
 const formRef = ref<FormInstance>()
 const tableData = ref<ExamRecord[]>([])
 const paperOptions = ref<PaperRecord[]>([])
+const classOptions = ref<ClassInfoRecord[]>([])
+const studentOptions = ref<Array<{ label: string; value: number }>>([])
 const currentRow = ref<ExamRecord>()
 const { pagination, updatePagination } = usePagination()
 const { subjectOptions, loadSubjects } = useSubjects()
 
-const studentOptions = [
-  { label: '学生一（ID:3）', value: 3 },
-  { label: '学生二（ID:4）', value: 4 },
-  { label: '学生三（ID:5）', value: 5 }
-]
-
 const queryForm = reactive({
   examName: '',
   status: ''
+})
+
+const studentQuery = reactive({
+  classId: '' as number | ''
 })
 
 const initialForm = () => ({
@@ -166,7 +173,7 @@ const initialForm = () => ({
   durationMinutes: 60,
   passScore: 60,
   status: 'DRAFT',
-  studentIds: [3] as number[]
+  studentIds: [] as number[]
 })
 
 const form = reactive(initialForm())
@@ -183,6 +190,36 @@ const rules: FormRules = {
 async function loadPaperOptions() {
   const result = await getPaperPageApi({ pageNum: 1, pageSize: 50 })
   paperOptions.value = result.data.records
+}
+
+async function loadClassOptions() {
+  const result = await getClassListApi()
+  classOptions.value = result.data
+}
+
+function classLabel(item: ClassInfoRecord) {
+  return item.gradeName ? `${item.gradeName} ${item.className}` : item.className
+}
+
+function studentLabel(item: UserRecord) {
+  const studentNo = item.studentNo ? `${item.studentNo} / ` : ''
+  return `${studentNo}${item.realName}`
+}
+
+async function loadStudentOptions(preserveSelected = true) {
+  const result = await getStudentListApi({ classId: studentQuery.classId })
+  studentOptions.value = result.data.map((item) => ({
+    label: studentLabel(item),
+    value: item.id
+  }))
+  if (preserveSelected) {
+    form.studentIds = form.studentIds.filter((studentId) => studentOptions.value.some((item) => item.value === studentId))
+  }
+}
+
+async function handleStudentClassChange() {
+  await loadStudentOptions(false)
+  form.studentIds = studentOptions.value.map((item) => item.value)
 }
 
 async function loadData() {
@@ -209,9 +246,12 @@ function resetQuery() {
 
 function resetFormState() {
   Object.assign(form, initialForm())
+  studentQuery.classId = ''
 }
 
 async function openDialog(row?: ExamRecord) {
+  studentQuery.classId = ''
+  await loadStudentOptions()
   if (!row?.id) {
     resetFormState()
     dialogVisible.value = true
@@ -282,7 +322,8 @@ function handlePageChange(pageNum: number, pageSize: number) {
 }
 
 onMounted(async () => {
-  await Promise.all([loadSubjects(), loadPaperOptions(), loadData()])
+  await Promise.all([loadSubjects(), loadClassOptions(), loadPaperOptions(), loadData()])
+  await loadStudentOptions()
 })
 </script>
 
