@@ -3,6 +3,15 @@ import Layout from '@/layout/index.vue'
 
 export const staticRoutes: AppRouteRecordRaw[] = [
   {
+    path: '/',
+    name: 'Landing',
+    component: () => import('@/views/landing/index.vue'),
+    meta: {
+      title: '首页',
+      hidden: true
+    }
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/login/index.vue'),
@@ -37,10 +46,6 @@ export const staticRoutes: AppRouteRecordRaw[] = [
       title: '404',
       hidden: true
     }
-  },
-  {
-    path: '/',
-    redirect: '/login'
   }
 ]
 

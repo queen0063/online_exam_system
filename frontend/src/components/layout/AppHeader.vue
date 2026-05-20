@@ -70,9 +70,11 @@ async function handleCommand(command: string) {
   justify-content: space-between;
   height: $header-height;
   padding: 0 20px;
-  background: rgba(255, 255, 255, 0.86);
-  border-bottom: 1px solid rgba(230, 235, 242, 0.9);
-  backdrop-filter: blur(10px);
+  background: $app-surface-overlay;
+  border-bottom: 1px solid $app-border-subtle;
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  transition: box-shadow $duration-base $ease-fluent;
 }
 
 .app-header__left,
@@ -100,7 +102,7 @@ async function handleCommand(command: string) {
 }
 
 .app-header__meta span {
-  color: $app-sub-text-color;
+  color: $app-text-secondary;
   font-size: 12px;
 }
 </style>

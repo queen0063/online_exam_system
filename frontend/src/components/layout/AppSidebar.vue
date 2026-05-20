@@ -93,8 +93,8 @@ function resolvePath(parentPath: string, childPath: string) {
   width: 38px;
   height: 38px;
   place-items: center;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  border-radius: $radius-lg;
+  background: linear-gradient(135deg, $app-primary, $app-primary-hover);
   font-weight: 800;
 }
 
@@ -126,10 +126,17 @@ function resolvePath(parentPath: string, childPath: string) {
 :deep(.el-menu-item),
 :deep(.el-sub-menu__title) {
   margin-bottom: 6px;
-  border-radius: 12px;
+  border-radius: $radius-lg;
+  transition: background-color $duration-fast $ease-fluent;
+}
+
+:deep(.el-menu-item:hover),
+:deep(.el-sub-menu__title:hover) {
+  background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 :deep(.el-menu-item.is-active) {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.85), rgba(29, 78, 216, 0.95));
+  background: linear-gradient(135deg, rgba(15, 108, 189, 0.85), rgba(17, 94, 155, 0.95));
+  box-shadow: 0 2px 8px rgba(15, 108, 189, 0.25);
 }
 </style>

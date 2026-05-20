@@ -1,19 +1,19 @@
 <template>
   <div class="register-page">
-    <div class="app-card register-card">
-      <div class="register-card__header">
+    <div class="register-page__card">
+      <div class="register-page__brand">
+        <div class="register-page__logo">EX</div>
         <div>
           <h1>账号注册</h1>
-          <p>教师账号提交后需管理员启用，学生账号注册后可直接登录。</p>
+          <p>选择身份，填写信息完成注册</p>
         </div>
-        <el-button text @click="goLogin">返回登录</el-button>
       </div>
 
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @keyup.enter="handleSubmit">
         <el-form-item label="注册身份" prop="roleCode">
           <el-radio-group v-model="form.roleCode">
-            <el-radio-button label="STUDENT">学生</el-radio-button>
-            <el-radio-button label="TEACHER">教师</el-radio-button>
+            <el-radio-button value="STUDENT">学生</el-radio-button>
+            <el-radio-button value="TEACHER">教师</el-radio-button>
           </el-radio-group>
         </el-form-item>
 
@@ -53,10 +53,15 @@
           title="教师账号注册后默认为禁用状态，需要管理员在用户管理中启用后才能登录。"
         />
 
-        <el-button class="w-full submit-button" type="primary" size="large" :loading="loading" @click="handleSubmit">
+        <el-button class="w-full register-page__submit" type="primary" size="large" :loading="loading" @click="handleSubmit">
           提交注册
         </el-button>
       </el-form>
+
+      <div class="register-page__footer">
+        <span>已有账号？</span>
+        <el-button text type="primary" @click="goLogin">返回登录</el-button>
+      </div>
     </div>
   </div>
 </template>
@@ -172,33 +177,66 @@ onMounted(loadClasses)
   min-height: 100vh;
   place-items: center;
   padding: 32px;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(15, 108, 189, 0.08), transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.04), transparent 35%),
+    linear-gradient(180deg, #f7f9fc 0%, #f3f6f9 100%);
 }
 
-.register-card {
-  width: min(760px, 100%);
-  padding: 32px;
+.register-page__card {
+  width: min(720px, 100%);
+  padding: 40px 36px 32px;
+  background: $app-surface-card;
+  border: 1px solid $app-border-subtle;
+  border-radius: $radius-2xl;
+  box-shadow: $shadow-lg;
 }
 
-.register-card__header {
+.register-page__brand {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 24px;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 32px;
 }
 
-.register-card__header h1 {
+.register-page__logo {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: $radius-lg;
+  background: linear-gradient(135deg, $app-primary, $app-primary-hover);
+  color: #fff;
+  font-weight: 800;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.register-page__brand h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: 20px;
+  font-weight: 600;
+  color: $app-text-color;
 }
 
-.register-card__header p {
-  margin: 8px 0 0;
-  color: $app-sub-text-color;
+.register-page__brand p {
+  margin: 4px 0 0;
+  color: $app-text-secondary;
+  font-size: 13px;
 }
 
-.submit-button {
+.register-page__submit {
   margin-top: 18px;
+}
+
+.register-page__footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 16px;
+  color: $app-text-secondary;
+  font-size: 14px;
 }
 
 @media (max-width: 720px) {
@@ -206,12 +244,13 @@ onMounted(loadClasses)
     padding: 16px;
   }
 
-  .register-card {
-    padding: 20px;
+  .register-page__card {
+    padding: 32px 24px 24px;
   }
 
-  .register-card__header {
-    display: grid;
+  .register-page__brand {
+    flex-direction: column;
+    text-align: center;
   }
 }
 </style>

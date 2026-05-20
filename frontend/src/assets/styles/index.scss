@@ -10,7 +10,30 @@
     Arial,
     sans-serif;
   color: $app-text-color;
-  background: $app-bg;
+  background: $app-surface-base;
+
+  // Element Plus theme sync
+  --el-color-primary: #{$app-primary};
+  --el-color-primary-light-3: #4a9fd4;
+  --el-color-primary-light-5: #7bbde0;
+  --el-color-primary-light-7: #a9d8ef;
+  --el-color-primary-light-8: #c4e5f5;
+  --el-color-primary-light-9: #e0f2fa;
+  --el-color-primary-dark-2: #{$app-primary-hover};
+  --el-color-success: #{$app-success};
+  --el-color-warning: #{$app-warning};
+  --el-color-danger: #{$app-danger};
+  --el-border-color-base: #{$app-border-color};
+  --el-border-color-light: #{$app-border-subtle};
+  --el-bg-color: #{$app-surface-card};
+  --el-bg-color-overlay: #{$app-surface-card};
+  --el-text-color-primary: #{$app-text-color};
+  --el-text-color-regular: #{$app-text-secondary};
+  --el-text-color-secondary: #{$app-text-tertiary};
+  --el-fill-color-light: #{$app-surface-subtle};
+  --el-fill-color-lighter: #{$app-primary-lighter};
+  --el-mask-color: rgba(255, 255, 255, 0.6);
+  --el-border-radius-base: #{$radius-md};
 }
 
 * {
@@ -28,8 +51,8 @@ body,
 
 body {
   background:
-    radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 28%),
-    linear-gradient(180deg, #f8fbff 0%, #f2f5f9 100%);
+    radial-gradient(circle at 20% 0%, rgba(15, 108, 189, 0.06), transparent 35%),
+    linear-gradient(180deg, #f7f9fc 0%, #f3f6f9 100%);
   color: $app-text-color;
 }
 
@@ -39,10 +62,24 @@ a {
 }
 
 .app-card {
-  background: $app-card-bg;
-  border: 1px solid rgba(230, 235, 242, 0.9);
-  border-radius: $radius-base;
-  box-shadow: $shadow-card;
+  background: $app-surface-card;
+  border: 1px solid $app-border-subtle;
+  border-radius: $radius-xl;
+  box-shadow: $shadow-md;
+  transition:
+    box-shadow $duration-base $ease-fluent,
+    transform $duration-base $ease-fluent;
+}
+
+.card-hoverable {
+  transition:
+    transform $duration-base $ease-fluent,
+    box-shadow $duration-base $ease-fluent;
+}
+
+.card-hoverable:hover {
+  transform: translateY(-2px);
+  box-shadow: $shadow-lg;
 }
 
 .page-grid {
@@ -55,7 +92,7 @@ a {
 }
 
 .text-secondary {
-  color: $app-sub-text-color;
+  color: $app-text-secondary;
 }
 
 .w-full {
@@ -89,18 +126,42 @@ a {
   }
 }
 
+// --- Element Plus overrides ---
+
 .el-card {
-  border-radius: $radius-base;
+  border-radius: $radius-xl;
+  border-color: $app-border-subtle;
+  box-shadow: $shadow-sm;
 }
 
 .el-dialog {
-  border-radius: 18px;
+  border-radius: $radius-2xl;
+  box-shadow: $shadow-xl;
 }
 
 .el-table {
-  --el-table-header-bg-color: #f8fafc;
+  --el-table-header-bg-color: #{$app-surface-subtle};
+}
+
+.el-button {
+  border-radius: $radius-md;
+  transition: all $duration-fast $ease-fluent;
 }
 
 .el-button + .el-button {
   margin-left: 0;
+}
+
+.el-input__wrapper,
+.el-textarea__inner {
+  border-radius: $radius-md;
+  transition: box-shadow $duration-fast $ease-fluent;
+}
+
+.el-select .el-input__wrapper {
+  border-radius: $radius-md;
+}
+
+.el-pagination {
+  --el-pagination-button-border-radius: #{$radius-md};
 }

@@ -1,14 +1,65 @@
-$app-bg: #f2f5f9;
-$app-card-bg: #ffffff;
-$app-border-color: #e6ebf2;
-$app-text-color: #1f2a37;
-$app-sub-text-color: #667085;
-$app-primary: #2563eb;
-$app-success: #16a34a;
-$app-warning: #d97706;
-$app-danger: #dc2626;
+// ============================================================
+// Fluent 2 Design Tokens
+// ============================================================
+
+// --- Color: Primary ---
+$app-primary: #0f6cbd;
+$app-primary-hover: #115e9b;
+$app-primary-active: #0c4a8a;
+$app-primary-light: rgba(15, 108, 189, 0.1);
+$app-primary-lighter: rgba(15, 108, 189, 0.04);
+
+// --- Color: Surface ---
+$app-surface-base: #f3f6f9;
+$app-surface-card: #ffffff;
+$app-surface-subtle: #f8f9fa;
+$app-surface-overlay: rgba(255, 255, 255, 0.72);
+
+// --- Color: Border ---
+$app-border-color: #e0e4e8;
+$app-border-subtle: rgba(224, 228, 232, 0.6);
+
+// --- Color: Text ---
+$app-text-color: #1a1f25;
+$app-text-secondary: #5d6b7a;
+$app-text-tertiary: #8a95a5;
+
+// --- Color: Semantic ---
+$app-success: #107c10;
+$app-success-bg: rgba(16, 124, 16, 0.08);
+$app-warning: #9c5d0b;
+$app-warning-bg: rgba(156, 93, 11, 0.08);
+$app-danger: #d13438;
+$app-danger-bg: rgba(209, 52, 56, 0.08);
+
+// --- Backward-compatible aliases (legacy names) ---
+$app-bg: $app-surface-base;
+$app-card-bg: $app-surface-card;
+$app-sub-text-color: $app-text-secondary;
+
+// --- Layout ---
 $header-height: 56px;
 $sidebar-width: 228px;
 $sidebar-collapse-width: 72px;
-$radius-base: 14px;
-$shadow-card: 0 10px 30px rgba(15, 23, 42, 0.06);
+
+// --- Radius Scale ---
+$radius-sm: 6px;
+$radius-md: 8px;
+$radius-lg: 12px;
+$radius-xl: 16px;
+$radius-2xl: 20px;
+$radius-pill: 999px;
+$radius-base: $radius-xl;
+
+// --- Shadow System ---
+$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+$shadow-md: 0 4px 8px rgba(0, 0, 0, 0.04), 0 2px 4px rgba(0, 0, 0, 0.06);
+$shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.05), 0 4px 8px rgba(0, 0, 0, 0.04);
+$shadow-xl: 0 16px 36px rgba(0, 0, 0, 0.06), 0 6px 12px rgba(0, 0, 0, 0.04);
+$shadow-card: $shadow-lg;
+
+// --- Animation ---
+$ease-fluent: cubic-bezier(0.2, 0, 0, 1);
+$duration-fast: 150ms;
+$duration-base: 200ms;
+$duration-slow: 300ms;

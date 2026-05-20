@@ -2,7 +2,7 @@
   <page-container title="工作台" description="按角色呈现今日考试工作概览与关键数据。">
     <div class="dashboard page-grid">
       <div class="dashboard__stats">
-        <div v-for="card in cards" :key="card.title" class="app-card dashboard__stat-card">
+        <div v-for="card in cards" :key="card.title" class="app-card dashboard__stat-card card-hoverable">
           <div>
             <div class="dashboard__stat-title">{{ card.title }}</div>
             <div class="dashboard__stat-value">{{ card.value }}</div>
@@ -73,10 +73,10 @@ const pieData = ref<Array<{ value: number; name: string }>>([])
 
 const WEEK_LABELS = Array.from({ length: 7 }, (_, index) => dayjs().subtract(6 - index, 'day').format('MM-DD'))
 const CARD_BACKGROUNDS = [
-  'rgba(37, 99, 235, 0.12)',
-  'rgba(22, 163, 74, 0.12)',
-  'rgba(217, 119, 6, 0.12)',
-  'rgba(139, 92, 246, 0.12)'
+  'rgba(15, 108, 189, 0.1)',
+  'rgba(16, 124, 16, 0.1)',
+  'rgba(156, 93, 11, 0.1)',
+  'rgba(139, 92, 246, 0.1)'
 ]
 
 const trendOption = computed<EChartsOption>(() => ({
@@ -94,13 +94,13 @@ const trendOption = computed<EChartsOption>(() => ({
       smooth: true,
       data: trendData.value,
       areaStyle: {
-        color: 'rgba(37, 99, 235, 0.12)'
+        color: 'rgba(15, 108, 189, 0.1)'
       },
       lineStyle: {
-        color: '#2563eb'
+        color: '#0f6cbd'
       },
       itemStyle: {
-        color: '#2563eb'
+        color: '#0f6cbd'
       }
     }
   ]
@@ -358,7 +358,7 @@ onMounted(() => {
 }
 
 .dashboard__stat-title {
-  color: $app-sub-text-color;
+  color: $app-text-secondary;
   font-size: 14px;
 }
 
@@ -370,7 +370,7 @@ onMounted(() => {
 
 .dashboard__stat-foot {
   margin-top: 8px;
-  color: $app-sub-text-color;
+  color: $app-text-secondary;
   font-size: 13px;
 }
 
@@ -379,7 +379,7 @@ onMounted(() => {
   width: 56px;
   height: 56px;
   place-items: center;
-  border-radius: 18px;
+  border-radius: $radius-xl;
   font-size: 24px;
 }
 
@@ -400,15 +400,20 @@ onMounted(() => {
 }
 
 .dashboard__todo-item {
-  padding: 16px;
-  border-radius: 16px;
-  background: #f8fafc;
+  padding: 14px;
+  border-radius: $radius-lg;
+  background: $app-surface-subtle;
+  transition: background-color $duration-fast $ease-fluent;
+}
+
+.dashboard__todo-item:hover {
+  background: #eef0f4;
 }
 
 .dashboard__todo-item span {
   display: block;
   margin-top: 8px;
-  color: $app-sub-text-color;
+  color: $app-text-secondary;
 }
 
 @media (max-width: 1200px) {

@@ -419,8 +419,8 @@ onMounted(() => {
 .question-thumb {
   width: 46px;
   height: 46px;
-  border: 1px solid $app-border-color;
-  border-radius: 6px;
+  border: 1px solid $app-border-subtle;
+  border-radius: $radius-md;
 }
 
 .empty-text {
@@ -447,8 +447,8 @@ onMounted(() => {
 .image-uploader__item :deep(.el-image) {
   width: 100%;
   height: 110px;
-  border: 1px solid $app-border-color;
-  border-radius: 8px;
-  background: #f8fafc;
+  border: 1px solid $app-border-subtle;
+  border-radius: $radius-md;
+  background: $app-surface-subtle;
 }
 </style>

@@ -51,9 +51,9 @@ onBeforeUnmount(() => {
   width: $sidebar-width;
   min-height: 100vh;
   background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98)),
-    radial-gradient(circle at top, rgba(37, 99, 235, 0.15), transparent 30%);
-  transition: width 0.2s ease;
+    linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.96)),
+    radial-gradient(circle at top 20% left 30%, rgba(15, 108, 189, 0.12), transparent 35%);
+  transition: width $duration-base $ease-fluent;
 }
 
 .layout-shell__sidebar.collapsed {
@@ -74,13 +74,13 @@ onBeforeUnmount(() => {
 
 .fade-slide-enter-active,
 .fade-slide-leave-active {
-  transition: all 0.2s ease;
+  transition: all $duration-slow $ease-fluent;
 }
 
 .fade-slide-enter-from,
 .fade-slide-leave-to {
   opacity: 0;
-  transform: translateY(6px);
+  transform: translateY(8px);
 }
 
 @media (max-width: 960px) {
@@ -89,7 +89,7 @@ onBeforeUnmount(() => {
     top: 0;
     bottom: 0;
     z-index: 20;
-    box-shadow: $shadow-card;
+    box-shadow: $shadow-xl;
   }
 
   .layout-shell__sidebar.collapsed {

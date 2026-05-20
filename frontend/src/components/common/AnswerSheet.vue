@@ -74,20 +74,29 @@ function isAnswered(questionId?: number) {
 .answer-sheet__item {
   height: 40px;
   border: 1px solid $app-border-color;
-  border-radius: 12px;
+  border-radius: $radius-md;
   background: #fff;
   cursor: pointer;
-  transition: 0.2s ease;
+  transition:
+    background-color $duration-fast $ease-fluent,
+    border-color $duration-fast $ease-fluent,
+    transform $duration-fast $ease-fluent;
+}
+
+.answer-sheet__item:hover {
+  background: $app-primary-light;
+  border-color: rgba(15, 108, 189, 0.25);
 }
 
 .answer-sheet__item.is-active {
   border-color: $app-primary;
-  background: rgba(37, 99, 235, 0.08);
+  background: $app-primary-light;
+  box-shadow: 0 0 0 1px $app-primary;
 }
 
 .answer-sheet__item.is-answered {
-  background: rgba(22, 163, 74, 0.12);
+  background: $app-success-bg;
   color: $app-success;
-  border-color: rgba(22, 163, 74, 0.2);
+  border-color: rgba(16, 124, 16, 0.2);
 }
 </style>

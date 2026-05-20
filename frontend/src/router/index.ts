@@ -6,7 +6,7 @@ import { useUserStore } from '@/stores/user'
 import { staticRoutes, notFoundRoute } from './routes'
 
 const DEFAULT_AUTHED_PATH = '/dashboard'
-const PUBLIC_PATHS = ['/login', '/register']
+const PUBLIC_PATHS = ['/', '/login', '/register']
 
 const router = createRouter({
   history: createWebHistory(),

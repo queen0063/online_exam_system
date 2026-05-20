@@ -118,9 +118,14 @@ function onInputChange(value: string) {
   flex-direction: column;
   gap: 16px;
   padding: 24px;
-  border-radius: 18px;
+  border-radius: $radius-xl;
   background: #fff;
-  border: 1px solid $app-border-color;
+  border: 1px solid $app-border-subtle;
+  transition: box-shadow $duration-base $ease-fluent;
+}
+
+.question-renderer:hover {
+  box-shadow: $shadow-md;
 }
 
 .question-renderer__header {
@@ -153,7 +158,7 @@ function onInputChange(value: string) {
 .question-renderer__type {
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(37, 99, 235, 0.12);
+  background: $app-primary-light;
   color: $app-primary;
   font-size: 12px;
 }
@@ -172,15 +177,15 @@ function onInputChange(value: string) {
 .question-renderer__images :deep(.el-image) {
   width: 100%;
   height: 150px;
-  border: 1px solid $app-border-color;
-  border-radius: 8px;
-  background: #f8fafc;
+  border: 1px solid $app-border-subtle;
+  border-radius: $radius-md;
+  background: $app-surface-subtle;
 }
 
 .question-renderer__analysis {
   padding: 16px;
-  border-radius: 14px;
-  background: #f8fafc;
+  border-radius: $radius-lg;
+  background: $app-surface-subtle;
 }
 
 .question-renderer__analysis p {
