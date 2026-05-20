@@ -85,6 +85,18 @@
         <template v-if="form.generateType === 'MANUAL'">
           <el-form-item label="选择题目">
             <div class="question-select">
+              <div class="question-select-toolbar">
+                <span class="question-select-label">题目科目</span>
+                <el-select
+                  v-model="manualQuestionQuery.subjectId"
+                  clearable
+                  placeholder="全部科目"
+                  style="width: 180px"
+                  @change="loadQuestionOptions"
+                >
+                  <el-option v-for="item in subjectOptions" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
+              </div>
               <common-table :data="questionOptions">
                 <el-table-column width="60">
                   <template #default="{ row }">
@@ -182,7 +194,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 
@@ -212,6 +224,10 @@ const { subjectOptions, loadSubjects } = useSubjects()
 
 const queryForm = reactive({
   paperName: '',
+  subjectId: '' as number | ''
+})
+
+const manualQuestionQuery = reactive({
   subjectId: '' as number | ''
 })
 
@@ -246,12 +262,38 @@ const rules: FormRules = {
   durationMinutes: [{ required: true, message: '请输入时长', trigger: 'change' }]
 }
 
+watch(
+  () => form.subjectId,
+  (subjectId) => {
+    if (!dialogVisible.value || form.generateType !== 'MANUAL') {
+      return
+    }
+    manualQuestionQuery.subjectId = Number(subjectId) || ''
+    loadQuestionOptions()
+  }
+)
+
+watch(
+  () => form.generateType,
+  (generateType) => {
+    if (!dialogVisible.value || generateType !== 'MANUAL') {
+      return
+    }
+    manualQuestionQuery.subjectId = Number(form.subjectId) || ''
+    loadQuestionOptions()
+  }
+)
+
 function questionTypeLabel(value: string) {
   return QUESTION_TYPE_OPTIONS.find((item) => item.value === value)?.label || value
 }
 
 async function loadQuestionOptions() {
-  const result = await getQuestionPageApi({ pageNum: 1, pageSize: 50 })
+  const result = await getQuestionPageApi({
+    pageNum: 1,
+    pageSize: 50,
+    subjectId: manualQuestionQuery.subjectId
+  })
   questionOptions.value = result.data.records
 }
 
@@ -279,6 +321,7 @@ function resetQuery() {
 
 function openDialog(row?: PaperRecord) {
   Object.assign(form, initialForm(), row || {})
+  manualQuestionQuery.subjectId = Number(form.subjectId) || ''
   if (form.generateType === 'RANDOM') {
     form.randomRules = row?.randomRules?.length
       ? row.randomRules.map((item) => ({ ...item }))
@@ -290,6 +333,7 @@ function openDialog(row?: PaperRecord) {
     questionScoreMap[Number(item.questionId)] = item.questionScore
   })
   dialogVisible.value = true
+  loadQuestionOptions()
 }
 
 function addRandomRule() {
@@ -383,7 +427,21 @@ onMounted(async () => {
 }
 
 .question-select {
+  display: grid;
+  gap: 12px;
   width: 100%;
+}
+
+.question-select-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.question-select-label {
+  color: var(--el-text-color-regular);
+  font-size: 14px;
 }
 
 .random-rule-panel {
