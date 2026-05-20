@@ -141,7 +141,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 
 import { getClassListApi } from '@/api/modules/classInfo'
@@ -263,6 +263,9 @@ function openDialog(row?: UserRecord) {
       : {}
   )
   dialogVisible.value = true
+  nextTick(() => {
+    formRef.value?.clearValidate()
+  })
 }
 
 function showDetail(row: UserRecord) {
@@ -273,14 +276,19 @@ function showDetail(row: UserRecord) {
 async function handleSubmit() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) {
+    ElMessage.warning('请检查用户信息是否填写完整')
     return
+  }
+  const payload = {
+    ...form,
+    password: form.id ? undefined : form.password
   }
   submitLoading.value = true
   try {
-    await saveUserApi(form)
+    await saveUserApi(payload)
     ElMessage.success('保存成功')
     dialogVisible.value = false
-    loadData()
+    await loadData()
   } finally {
     submitLoading.value = false
   }

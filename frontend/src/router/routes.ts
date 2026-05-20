@@ -12,6 +12,15 @@ export const staticRoutes: AppRouteRecordRaw[] = [
     }
   },
   {
+    path: '/register',
+    name: 'Register',
+    component: () => import('@/views/register/index.vue'),
+    meta: {
+      title: '注册',
+      hidden: true
+    }
+  },
+  {
     path: '/403',
     name: 'Forbidden',
     component: () => import('@/views/error/403.vue'),

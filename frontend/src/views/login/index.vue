@@ -32,6 +32,10 @@
           <el-button class="w-full" type="primary" size="large" :loading="loading" @click="handleLogin">
             登录系统
           </el-button>
+          <div class="login-page__register">
+            <span>还没有账号？</span>
+            <el-button text @click="goRegister">注册账号</el-button>
+          </div>
         </el-form>
       </div>
     </div>
@@ -85,6 +89,10 @@ async function handleLogin() {
 function fillAccount(username: string) {
   form.username = username
   form.password = 'Admin@123'
+}
+
+function goRegister() {
+  router.push('/register')
 }
 </script>
 
@@ -166,6 +174,15 @@ function fillAccount(username: string) {
   justify-content: flex-end;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.login-page__register {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 14px;
+  color: $app-sub-text-color;
 }
 
 @media (max-width: 960px) {

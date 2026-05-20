@@ -70,6 +70,51 @@ class ApiIntegrationTests {
     }
 
     @Test
+    void loginWithWrongAccountShouldReturnPasswordErrorMessage() throws Exception {
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "not-exists",
+                                  "password": "wrong-password"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(401))
+                .andExpect(jsonPath("$.message").value("用户名或密码错误"));
+    }
+
+    @Test
+    void registeredTeacherShouldNotLoginBeforeEnabled() throws Exception {
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "pending_teacher",
+                                  "password": "Admin@123",
+                                  "realName": "待审核教师",
+                                  "roleCode": "TEACHER",
+                                  "phone": "13900000001",
+                                  "email": "pending-teacher@example.com"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "pending_teacher",
+                                  "password": "Admin@123"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(401))
+                .andExpect(jsonPath("$.message").value("账号未启用，请联系管理员"));
+    }
+
+    @Test
     void requestWithoutTokenShouldBeUnauthorized() throws Exception {
         mockMvc.perform(get("/users"))
                 .andExpect(status().isUnauthorized())

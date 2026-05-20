@@ -19,6 +19,17 @@ export interface LoginPayload {
   password: string
 }
 
+export interface RegisterPayload {
+  username: string
+  password: string
+  realName: string
+  roleCode: 'TEACHER' | 'STUDENT'
+  studentNo?: string
+  classId?: number
+  phone?: string
+  email?: string
+}
+
 export interface RoleItem {
   id: number
   roleCode: string

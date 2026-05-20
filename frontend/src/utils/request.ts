@@ -54,7 +54,7 @@ async function handleUnauthorized(error: unknown, config?: any) {
   resetRouter()
   ElMessage.error('登录已失效，请重新登录')
 
-  if (currentRoute.path !== '/login') {
+  if (currentRoute.path !== '/login' && currentRoute.path !== '/register') {
     await router.replace({
       path: '/login',
       query: { redirect: currentRoute.fullPath }
@@ -95,6 +95,10 @@ request.interceptors.response.use(
     const message = error?.response?.data?.message || error?.message || '网络异常'
 
     if (status === 401) {
+      if (isLoginRequest(error?.config?.url)) {
+        ElMessage.error(message || '用户名或密码错误')
+        return Promise.reject(error)
+      }
       return handleUnauthorized(error, error?.config)
     }
 
