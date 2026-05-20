@@ -63,7 +63,7 @@ export interface UserRecord {
 }
 
 export interface ClassInfoRecord {
-  id: number
+  id?: number
   classCode: string
   className: string
   gradeName?: string

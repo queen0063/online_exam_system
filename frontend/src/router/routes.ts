@@ -82,6 +82,12 @@ export const asyncRoutes: AppRouteRecordRaw[] = [
         name: 'SubjectManagement',
         component: () => import('@/views/system/subjects.vue'),
         meta: { title: '科目管理', icon: 'Reading' }
+      },
+      {
+        path: 'classes',
+        name: 'ClassManagement',
+        component: () => import('@/views/system/classes.vue'),
+        meta: { title: '班级管理', icon: 'School' }
       }
     ]
   },

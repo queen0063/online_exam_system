@@ -24,11 +24,6 @@
           <el-form-item label="密码" prop="password">
             <el-input v-model="form.password" show-password placeholder="请输入密码" size="large" />
           </el-form-item>
-          <div class="login-page__accounts">
-            <el-button text @click="fillAccount('admin')">管理员</el-button>
-            <el-button text @click="fillAccount('teacher')">教师</el-button>
-            <el-button text @click="fillAccount('student')">学生</el-button>
-          </div>
           <el-button class="w-full" type="primary" size="large" :loading="loading" @click="handleLogin">
             登录系统
           </el-button>
@@ -58,8 +53,8 @@ const userStore = useUserStore()
 const formRef = ref<FormInstance>()
 const loading = ref(false)
 const form = reactive({
-  username: 'admin',
-  password: 'Admin@123'
+  username: '',
+  password: ''
 })
 
 const rules: FormRules = {
@@ -84,11 +79,6 @@ async function handleLogin() {
   } finally {
     loading.value = false
   }
-}
-
-function fillAccount(username: string) {
-  form.username = username
-  form.password = 'Admin@123'
 }
 
 function goRegister() {
@@ -167,13 +157,6 @@ function goRegister() {
   display: block;
   margin-top: 8px;
   color: $app-sub-text-color;
-}
-
-.login-page__accounts {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-bottom: 12px;
 }
 
 .login-page__register {
