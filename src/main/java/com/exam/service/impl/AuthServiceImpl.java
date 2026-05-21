@@ -83,12 +83,7 @@ public class AuthServiceImpl implements AuthService {
         recordLoginLog(user.getId(), user.getUsername(), 1, request, "登录成功");
         return LoginVO.builder()
                 .token(jwtTokenProvider.createToken(securityUser))
-                .userInfo(CurrentUserVO.builder()
-                        .userId(user.getId())
-                        .username(user.getUsername())
-                        .realName(user.getRealName())
-                        .roleCodes(securityUser.getRoleCodes())
-                        .build())
+                .userInfo(buildCurrentUserVO(user, roles))
                 .build();
     }
 
@@ -165,12 +160,41 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public CurrentUserVO getCurrentUser() {
         SecurityUser currentUser = SecurityContextUtils.getCurrentUser();
-        return CurrentUserVO.builder()
-                .userId(currentUser.getUserId())
-                .username(currentUser.getUsername())
-                .realName(currentUser.getRealName())
-                .roleCodes(currentUser.getRoleCodes())
-                .build();
+        SysUser user = sysUserMapper.selectById(currentUser.getUserId());
+        List<SysRole> roles = sysRoleMapper.selectRolesByUserId(currentUser.getUserId());
+        return buildCurrentUserVO(user, roles);
+    }
+
+    private CurrentUserVO buildCurrentUserVO(SysUser user, List<SysRole> roles) {
+        List<String> roleCodes = roles.stream().map(SysRole::getRoleCode).toList();
+        CurrentUserVO.CurrentUserVOBuilder builder = CurrentUserVO.builder()
+                .userId(user.getId())
+                .username(user.getUsername())
+                .realName(user.getRealName())
+                .phone(user.getPhone())
+                .email(user.getEmail())
+                .roleCodes(roleCodes);
+
+        if (roleCodes.contains(RoleCode.STUDENT.name())) {
+            builder.studentNo(user.getStudentNo());
+            builder.classId(user.getClassId());
+            if (user.getClassId() != null) {
+                ClassInfo classInfo = classInfoMapper.selectById(user.getClassId());
+                if (classInfo != null) {
+                    builder.className(classInfo.getClassName());
+                    builder.gradeName(classInfo.getGradeName());
+                }
+            }
+        }
+
+        if (roleCodes.contains(RoleCode.TEACHER.name())) {
+            List<ClassInfoVO> teacherClasses = classInfoMapper.selectVisible(user.getId(), false).stream()
+                    .map(this::toClassInfoVO)
+                    .toList();
+            builder.teacherClasses(teacherClasses);
+        }
+
+        return builder.build();
     }
 
     private void recordLoginLog(Long userId, String username, Integer successFlag, HttpServletRequest request, String message) {

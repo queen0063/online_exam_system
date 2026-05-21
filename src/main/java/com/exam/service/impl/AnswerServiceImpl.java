@@ -358,6 +358,7 @@ public class AnswerServiceImpl implements AnswerService {
                 .endTime(exam.getEndTime())
                 .durationMinutes(exam.getDurationMinutes())
                 .passScore(exam.getPassScore())
+                .maxSwitchCount(exam.getMaxSwitchCount())
                 .status(exam.getStatus())
                 .resultPublished(exam.getResultPublished())
                 .answerStatus(answerStatus)

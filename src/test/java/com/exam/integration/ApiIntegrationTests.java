@@ -201,11 +201,18 @@ class ApiIntegrationTests {
                                   "endTime": "2026-04-19 00:16:08",
                                   "durationMinutes": 60,
                                   "passScore": 60,
+                                  "maxSwitchCount": 2,
                                   "studentIds": [3]
                                 }
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
+
+        Long examId = findTeacherExamIdByName(token, "考试时间格式回归验证");
+        mockMvc.perform(get("/exams/" + examId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.maxSwitchCount").value(2));
     }
 
     @Test

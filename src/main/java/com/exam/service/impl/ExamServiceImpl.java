@@ -108,6 +108,7 @@ public class ExamServiceImpl implements ExamService {
         exam.setEndTime(examSaveDTO.getEndTime());
         exam.setDurationMinutes(examSaveDTO.getDurationMinutes());
         exam.setPassScore(examSaveDTO.getPassScore());
+        exam.setMaxSwitchCount(examSaveDTO.getMaxSwitchCount());
         exam.setStatus(ExamStatusEnum.DRAFT.name());
         exam.setResultPublished(0);
         exam.setUpdateTime(LocalDateTime.now());
@@ -272,6 +273,7 @@ public class ExamServiceImpl implements ExamService {
                 .endTime(exam.getEndTime())
                 .durationMinutes(exam.getDurationMinutes())
                 .passScore(exam.getPassScore())
+                .maxSwitchCount(exam.getMaxSwitchCount())
                 .status(exam.getStatus())
                 .resultPublished(exam.getResultPublished())
                 .studentIds(studentIds)

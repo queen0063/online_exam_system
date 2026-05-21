@@ -29,6 +29,7 @@ export interface ExamSavePayload {
   endTime: string
   durationMinutes: number
   passScore: number
+  maxSwitchCount?: number
   status?: string
   studentIds: number[]
 }

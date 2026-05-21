@@ -86,6 +86,18 @@
             <el-date-picker v-model="form.endTime" type="datetime" class="w-full" value-format="YYYY-MM-DD HH:mm:ss" />
           </el-form-item>
         </div>
+        <el-form-item label="防切屏">
+          <div class="anti-switch-setting">
+            <el-switch v-model="form.antiSwitchEnabled" active-text="启用" inactive-text="不启用" />
+            <el-input-number
+              v-if="form.antiSwitchEnabled"
+              v-model="form.maxSwitchCount"
+              :min="0"
+              :max="99"
+              controls-position="right"
+            />
+          </div>
+        </el-form-item>
         <el-form-item label="学生班级">
           <el-select v-model="studentQuery.classId" clearable class="w-full" placeholder="全部可选班级" @change="handleStudentClassChange">
             <el-option v-for="item in classOptions" :key="item.id" :label="classLabel(item)" :value="item.id" />
@@ -110,6 +122,9 @@
         <el-descriptions-item label="结束时间">{{ formatDateTime(currentRow?.endTime) }}</el-descriptions-item>
         <el-descriptions-item label="考试时长">{{ currentRow?.durationMinutes }} 分钟</el-descriptions-item>
         <el-descriptions-item label="及格线">{{ currentRow?.passScore }} 分</el-descriptions-item>
+        <el-descriptions-item label="防切屏">
+          {{ currentRow?.maxSwitchCount === undefined || currentRow?.maxSwitchCount === null ? '不启用' : `超过 ${currentRow.maxSwitchCount} 次自动交卷` }}
+        </el-descriptions-item>
         <el-descriptions-item label="状态">{{ statusMap[currentRow?.status || ''] || '-' }}</el-descriptions-item>
       </el-descriptions>
     </el-drawer>
@@ -172,6 +187,8 @@ const initialForm = () => ({
   endTime: '',
   durationMinutes: 60,
   passScore: 60,
+  antiSwitchEnabled: false,
+  maxSwitchCount: 3 as number | undefined,
   status: 'DRAFT',
   studentIds: [] as number[]
 })
@@ -265,6 +282,8 @@ async function openDialog(row?: ExamRecord) {
     Object.assign(form, initialForm(), result.data, {
       startTime: formatDateTime(result.data.startTime),
       endTime: formatDateTime(result.data.endTime),
+      antiSwitchEnabled: result.data.maxSwitchCount !== undefined && result.data.maxSwitchCount !== null,
+      maxSwitchCount: result.data.maxSwitchCount ?? 3,
       studentIds: result.data.studentIds || []
     })
   } finally {
@@ -285,8 +304,17 @@ async function handleSubmit() {
   submitLoading.value = true
   try {
     await saveExamApi({
-      ...form,
-      paperId: Number(form.paperId)
+      id: form.id,
+      examName: form.examName,
+      paperId: Number(form.paperId),
+      subjectId: Number(form.subjectId),
+      startTime: form.startTime,
+      endTime: form.endTime,
+      durationMinutes: Number(form.durationMinutes),
+      passScore: Number(form.passScore),
+      maxSwitchCount: form.antiSwitchEnabled ? Number(form.maxSwitchCount ?? 0) : undefined,
+      status: form.status,
+      studentIds: form.studentIds
     })
     ElMessage.success('考试保存成功')
     dialogVisible.value = false
@@ -330,5 +358,11 @@ onMounted(async () => {
 <style scoped lang="scss">
 .table-wrapper {
   padding: 16px;
+}
+
+.anti-switch-setting {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 </style>

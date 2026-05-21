@@ -1,6 +1,7 @@
 package com.exam.dto.exam;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -38,6 +39,9 @@ public class ExamSaveDTO {
 
     @NotNull(message = "及格线不能为空")
     private Integer passScore;
+
+    @Min(value = 0, message = "切屏次数不能小于0")
+    private Integer maxSwitchCount;
 
     @NotEmpty(message = "参与学生不能为空")
     private List<Long> studentIds;

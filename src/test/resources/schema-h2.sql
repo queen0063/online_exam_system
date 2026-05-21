@@ -136,6 +136,7 @@ CREATE TABLE IF NOT EXISTS exam
     end_time         DATETIME     NOT NULL,
     duration_minutes INT          NOT NULL,
     pass_score       INT          NOT NULL,
+    max_switch_count INT,
     status           VARCHAR(32)  NOT NULL,
     result_published INT          NOT NULL DEFAULT 0,
     create_time      DATETIME     NOT NULL,

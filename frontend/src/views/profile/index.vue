@@ -12,7 +12,32 @@
         <el-descriptions :column="1" border>
           <el-descriptions-item label="用户 ID">{{ userStore.userInfo?.userId }}</el-descriptions-item>
           <el-descriptions-item label="角色">{{ userStore.roleCodes.join('、') }}</el-descriptions-item>
-          <el-descriptions-item label="头像">{{ '预留头像上传区域' }}</el-descriptions-item>
+          <el-descriptions-item label="手机号">{{ userStore.userInfo?.phone || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="邮箱">{{ userStore.userInfo?.email || '-' }}</el-descriptions-item>
+
+          <!-- 学生专属信息 -->
+          <template v-if="userStore.roleCodes.includes('STUDENT')">
+            <el-descriptions-item label="学号">{{ userStore.userInfo?.studentNo || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="年级">{{ userStore.userInfo?.gradeName || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="班级">{{ userStore.userInfo?.className || '-' }}</el-descriptions-item>
+          </template>
+
+          <!-- 教师专属信息 -->
+          <template v-if="userStore.roleCodes.includes('TEACHER')">
+            <el-descriptions-item label="负责班级">
+              <span v-if="userStore.userInfo?.teacherClasses?.length">
+                <el-tag
+                  v-for="cls in userStore.userInfo.teacherClasses"
+                  :key="cls.id"
+                  class="profile-card__class-tag"
+                  effect="light"
+                >
+                  {{ cls.gradeName ? `${cls.gradeName} ` : '' }}{{ cls.className }}
+                </el-tag>
+              </span>
+              <span v-else>-</span>
+            </el-descriptions-item>
+          </template>
         </el-descriptions>
       </div>
 
@@ -107,5 +132,10 @@ async function handleChangePassword() {
 .profile-card__avatar p {
   margin: 8px 0 0;
   color: $app-sub-text-color;
+}
+
+.profile-card__class-tag {
+  margin-right: 6px;
+  margin-bottom: 4px;
 }
 </style>

@@ -41,7 +41,14 @@ export interface UserInfo {
   userId: number
   username: string
   realName: string
+  phone?: string
+  email?: string
   roleCodes: string[]
+  studentNo?: string
+  classId?: number
+  className?: string
+  gradeName?: string
+  teacherClasses?: ClassInfoRecord[]
 }
 
 export interface LoginResult {
@@ -148,6 +155,7 @@ export interface ExamRecord {
   countdownEndTime?: string
   durationMinutes: number
   passScore: number
+  maxSwitchCount?: number
   status: string
   resultPublished?: number
   answerStatus?: string
