@@ -2,7 +2,7 @@
   <div class="register-page">
     <div class="register-page__card">
       <div class="register-page__brand">
-        <div class="register-page__logo">EX</div>
+        <img class="register-page__logo" src="/logo.png" alt="Logo" />
         <div>
           <h1>账号注册</h1>
           <p>选择身份，填写信息完成注册</p>
@@ -200,15 +200,10 @@ onMounted(loadClasses)
 }
 
 .register-page__logo {
-  display: grid;
   width: 42px;
   height: 42px;
-  place-items: center;
   border-radius: $radius-lg;
-  background: linear-gradient(135deg, $app-primary, $app-primary-hover);
-  color: #fff;
-  font-weight: 800;
-  font-size: 16px;
+  object-fit: contain;
   flex-shrink: 0;
 }
 

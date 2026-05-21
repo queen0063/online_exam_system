@@ -2,7 +2,7 @@
   <div class="login-page">
     <div class="login-page__card">
       <div class="login-page__brand">
-        <div class="login-page__logo">EX</div>
+        <img class="login-page__logo" src="/logo.png" alt="Logo" />
         <h1>在线考试系统</h1>
       </div>
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @keyup.enter="handleLogin">
@@ -102,15 +102,10 @@ function goRegister() {
 }
 
 .login-page__logo {
-  display: grid;
   width: 42px;
   height: 42px;
-  place-items: center;
   border-radius: $radius-lg;
-  background: linear-gradient(135deg, $app-primary, $app-primary-hover);
-  color: #fff;
-  font-weight: 800;
-  font-size: 16px;
+  object-fit: contain;
   flex-shrink: 0;
 }
 

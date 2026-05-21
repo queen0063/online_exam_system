@@ -3,7 +3,7 @@
     <nav class="landing__nav">
       <div class="landing__nav-inner">
         <div class="landing__nav-brand">
-          <div class="landing__logo">EX</div>
+          <img class="landing__logo" src="/logo.png" alt="Logo" />
           <span>在线考试系统</span>
         </div>
         <div class="landing__nav-actions">
@@ -144,15 +144,10 @@ const STATS = [
 }
 
 .landing__logo {
-  display: grid;
   width: 34px;
   height: 34px;
-  place-items: center;
   border-radius: $radius-lg;
-  background: linear-gradient(135deg, $app-primary, $app-primary-hover);
-  color: #fff;
-  font-weight: 800;
-  font-size: 14px;
+  object-fit: contain;
 }
 
 .landing__nav-actions {

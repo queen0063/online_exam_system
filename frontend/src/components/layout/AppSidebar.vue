@@ -1,11 +1,14 @@
 <template>
   <div class="sidebar">
     <div class="sidebar__brand">
-      <div class="sidebar__logo">EX</div>
+      <img class="sidebar__logo" src="/logo.png" alt="Logo" />
       <div v-if="!appStore.sidebarCollapsed" class="sidebar__title">
         <strong>在线考试系统</strong>
         <span>Online Exam Admin</span>
       </div>
+      <button v-if="appStore.isMobile && !appStore.sidebarCollapsed" class="sidebar__close" @click="appStore.toggleSidebar">
+        <el-icon><app-icon name="Close" /></el-icon>
+      </button>
     </div>
 
     <el-scrollbar class="sidebar__menu">
@@ -89,13 +92,10 @@ function resolvePath(parentPath: string, childPath: string) {
 }
 
 .sidebar__logo {
-  display: grid;
   width: 38px;
   height: 38px;
-  place-items: center;
   border-radius: $radius-lg;
-  background: linear-gradient(135deg, $app-primary, $app-primary-hover);
-  font-weight: 800;
+  object-fit: contain;
 }
 
 .sidebar__title {
@@ -112,6 +112,33 @@ function resolvePath(parentPath: string, childPath: string) {
 .sidebar__title span {
   color: rgba(226, 232, 240, 0.7);
   font-size: 12px;
+}
+
+.sidebar__close {
+  display: none;
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: $radius-md;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: background-color $duration-fast $ease-fluent;
+}
+
+.sidebar__close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 960px) {
+  .sidebar__close {
+    display: inline-flex;
+  }
 }
 
 .sidebar__menu {

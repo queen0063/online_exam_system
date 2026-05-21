@@ -65,6 +65,8 @@ async function handleCommand(command: string) {
 
 <style scoped lang="scss">
 .app-header {
+  position: relative;
+  z-index: 101;
   display: flex;
   align-items: center;
   justify-content: space-between;

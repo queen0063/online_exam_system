@@ -3,6 +3,7 @@
     <aside class="layout-shell__sidebar" :class="{ collapsed: appStore.sidebarCollapsed }">
       <app-sidebar />
     </aside>
+    <div class="layout-shell__mask" :class="{ visible: appStore.isMobile && !appStore.sidebarCollapsed }" @click="appStore.toggleSidebar" />
     <div class="layout-shell__main">
       <app-header />
       <app-tags-view />
@@ -88,13 +89,29 @@ onBeforeUnmount(() => {
     position: fixed;
     top: 0;
     bottom: 0;
-    z-index: 20;
+    z-index: 100;
     box-shadow: $shadow-xl;
+    transition: transform $duration-base $ease-fluent;
   }
 
   .layout-shell__sidebar.collapsed {
-    width: 0;
-    overflow: hidden;
+    transform: translateX(-100%);
+    width: $sidebar-width;
+  }
+
+  .layout-shell__mask {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity $duration-base $ease-fluent;
+  }
+
+  .layout-shell__mask.visible {
+    opacity: 1;
+    pointer-events: auto;
   }
 }
 </style>

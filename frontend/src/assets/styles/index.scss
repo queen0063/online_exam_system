@@ -165,3 +165,19 @@ a {
 .el-pagination {
   --el-pagination-button-border-radius: #{$radius-md};
 }
+
+@media (max-width: 768px) {
+  .query-bar :deep(.el-form--inline .el-form-item) {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .query-bar :deep(.el-form--inline .el-form-item .el-input),
+  .query-bar :deep(.el-form--inline .el-form-item .el-select) {
+    width: 100% !important;
+  }
+
+  .table-wrapper {
+    padding: 12px !important;
+  }
+}
