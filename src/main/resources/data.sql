@@ -42,13 +42,14 @@ UPDATE exam_student es
     JOIN sys_user u ON u.id = es.student_id
 SET es.deleted = 0,
     es.answer_status = IFNULL(es.answer_status, 'NOT_STARTED'),
+    es.switch_count = IFNULL(es.switch_count, 0),
     es.update_time = CURRENT_TIMESTAMP
 WHERE e.id = 1
   AND u.username IN ('student2', 'student3')
   AND es.deleted = 1;
 
-INSERT IGNORE INTO exam_student(exam_id, student_id, answer_status, create_time, update_time, deleted)
-SELECT e.id, u.id, 'NOT_STARTED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0
+INSERT IGNORE INTO exam_student(exam_id, student_id, answer_status, switch_count, create_time, update_time, deleted)
+SELECT e.id, u.id, 'NOT_STARTED', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0
 FROM exam e
          JOIN sys_user u ON u.username IN ('student2', 'student3') AND u.deleted = 0
 WHERE e.id = 1

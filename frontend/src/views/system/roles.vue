@@ -1,5 +1,5 @@
 <template>
-  <page-container title="角色管理" description="管理员可维护角色编码、角色名称与启用状态。">
+  <page-container title="角色管理" description="管理员可维护角色名称与启用状态，角色编码由系统自动生成。">
     <query-bar>
       <el-form :model="queryForm" inline>
         <el-form-item label="角色名称">
@@ -37,8 +37,8 @@
 
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑角色' : '新增角色'" width="520px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
-        <el-form-item label="角色编码" prop="roleCode">
-          <el-input v-model="form.roleCode" placeholder="如 ADMIN" />
+        <el-form-item v-if="form.id" label="角色编码">
+          <el-input v-model="form.roleCode" disabled />
         </el-form-item>
         <el-form-item label="角色名称" prop="roleName">
           <el-input v-model="form.roleName" placeholder="请输入中文角色名" />
@@ -96,7 +96,6 @@ const form = reactive({
 })
 
 const rules: FormRules = {
-  roleCode: [{ required: true, message: '请输入角色编码', trigger: 'blur' }],
   roleName: [{ required: true, message: '请输入角色名称', trigger: 'blur' }]
 }
 

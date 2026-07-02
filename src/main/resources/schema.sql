@@ -159,6 +159,7 @@ CREATE TABLE IF NOT EXISTS exam_student
     exam_id       BIGINT      NOT NULL,
     student_id    BIGINT      NOT NULL,
     answer_status VARCHAR(32) NOT NULL,
+    switch_count  INT         NOT NULL DEFAULT 0,
     create_time   DATETIME    NOT NULL,
     update_time   DATETIME    NOT NULL,
     deleted       INT         NOT NULL DEFAULT 0,

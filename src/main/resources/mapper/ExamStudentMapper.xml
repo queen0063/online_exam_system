@@ -5,14 +5,14 @@
 <mapper namespace="com.exam.mapper.ExamStudentMapper">
 
     <select id="selectByExamId" resultType="com.exam.entity.ExamStudent">
-        select id, exam_id, student_id, answer_status, create_time, update_time, deleted
+        select id, exam_id, student_id, answer_status, switch_count, create_time, update_time, deleted
         from exam_student
         where deleted = 0
           and exam_id = #{examId}
     </select>
 
     <select id="selectByExamIdAndStudentId" resultType="com.exam.entity.ExamStudent">
-        select id, exam_id, student_id, answer_status, create_time, update_time, deleted
+        select id, exam_id, student_id, answer_status, switch_count, create_time, update_time, deleted
         from exam_student
         where deleted = 0
           and exam_id = #{examId}
@@ -20,11 +20,32 @@
         limit 1
     </select>
 
+    <select id="selectMonitoringByExamId" resultType="com.exam.vo.exam.ExamMonitorVO">
+        select es.exam_id,
+               es.student_id,
+               u.student_no,
+               u.real_name as student_name,
+               c.class_name,
+               c.grade_name,
+               es.answer_status,
+               es.switch_count,
+               es.update_time as start_time
+        from exam_student es
+                 join sys_user u on u.id = es.student_id and u.deleted = 0
+                 left join class_info c on c.id = u.class_id and c.deleted = 0
+        where es.deleted = 0
+          and es.exam_id = #{examId}
+          and es.answer_status in ('ANSWERING', 'SUBMITTED', 'WAIT_MARKING', 'MARKED')
+        order by case when es.answer_status = 'ANSWERING' then 0 else 1 end,
+                 es.switch_count desc,
+                 es.update_time asc
+    </select>
+
     <insert id="batchInsert">
-        insert into exam_student(exam_id, student_id, answer_status, create_time, update_time, deleted)
+        insert into exam_student(exam_id, student_id, answer_status, switch_count, create_time, update_time, deleted)
         values
         <foreach collection="list" item="item" separator=",">
-            (#{item.examId}, #{item.studentId}, #{item.answerStatus}, #{item.createTime}, #{item.updateTime}, #{item.deleted})
+            (#{item.examId}, #{item.studentId}, #{item.answerStatus}, #{item.switchCount}, #{item.createTime}, #{item.updateTime}, #{item.deleted})
         </foreach>
     </insert>
 
@@ -36,9 +57,21 @@
     <update id="updateAnswerStatus">
         update exam_student
         set answer_status = #{answerStatus},
-            update_time = #{updateTime}
+            update_time = case
+                when #{answerStatus} = 'ANSWERING' then #{updateTime}
+                else update_time
+            end
         where exam_id = #{examId}
           and student_id = #{studentId}
+          and deleted = 0
+    </update>
+
+    <update id="updateSwitchCount">
+        update exam_student
+        set switch_count = case when switch_count > #{switchCount} then switch_count else #{switchCount} end
+        where exam_id = #{examId}
+          and student_id = #{studentId}
+          and answer_status = 'ANSWERING'
           and deleted = 0
     </update>
 </mapper>

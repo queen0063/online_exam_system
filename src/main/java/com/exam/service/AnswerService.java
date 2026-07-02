@@ -19,5 +19,7 @@ public interface AnswerService {
 
     void submit(Long examId);
 
+    void reportSwitchCount(Long examId, Integer switchCount);
+
     List<AnswerVO> answerDetail(Long examId);
 }

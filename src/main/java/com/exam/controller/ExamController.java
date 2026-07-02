@@ -7,8 +7,10 @@ import com.exam.common.result.Result;
 import com.exam.dto.exam.ExamQueryDTO;
 import com.exam.dto.exam.ExamSaveDTO;
 import com.exam.service.ExamService;
+import com.exam.vo.exam.ExamMonitorVO;
 import com.exam.vo.exam.ExamVO;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -46,6 +48,12 @@ public class ExamController {
     @GetMapping("/{id}")
     public Result<ExamVO> detail(@PathVariable Long id) {
         return Result.success(examService.detail(id));
+    }
+
+    @GetMapping("/{id}/monitoring")
+    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
+    public Result<List<ExamMonitorVO>> monitoring(@PathVariable Long id) {
+        return Result.success(examService.monitoring(id));
     }
 
     @PostMapping

@@ -68,31 +68,31 @@ export const asyncRoutes: AppRouteRecordRaw[] = [
     path: '/system',
     component: Layout,
     redirect: '/system/users',
-    meta: { title: '系统管理', icon: 'Setting', roles: ['ADMIN'] },
+    meta: { title: '系统管理', icon: 'Setting', roles: ['ADMIN', 'TEACHER'] },
     children: [
       {
         path: 'users',
         name: 'UserManagement',
         component: () => import('@/views/system/users.vue'),
-        meta: { title: '用户管理', icon: 'User' }
+        meta: { title: '学生管理', icon: 'User', roles: ['ADMIN', 'TEACHER'] }
       },
       {
         path: 'roles',
         name: 'RoleManagement',
         component: () => import('@/views/system/roles.vue'),
-        meta: { title: '角色管理', icon: 'Avatar' }
+        meta: { title: '角色管理', icon: 'Avatar', roles: ['ADMIN'] }
       },
       {
         path: 'subjects',
         name: 'SubjectManagement',
         component: () => import('@/views/system/subjects.vue'),
-        meta: { title: '科目管理', icon: 'Reading' }
+        meta: { title: '科目管理', icon: 'Reading', roles: ['ADMIN', 'TEACHER'] }
       },
       {
         path: 'classes',
         name: 'ClassManagement',
         component: () => import('@/views/system/classes.vue'),
-        meta: { title: '班级管理', icon: 'School' }
+        meta: { title: '班级管理', icon: 'School', roles: ['ADMIN', 'TEACHER'] }
       }
     ]
   },
@@ -147,6 +147,12 @@ export const asyncRoutes: AppRouteRecordRaw[] = [
         name: 'ExamList',
         component: () => import('@/views/exam/list.vue'),
         meta: { title: '考试列表', icon: 'Memo' }
+      },
+      {
+        path: 'monitor/:examId',
+        name: 'ExamMonitor',
+        component: () => import('@/views/exam/monitor.vue'),
+        meta: { title: '考试监测', hidden: true, activeMenu: '/exam/list', roles: ['ADMIN', 'TEACHER'] }
       }
     ]
   },

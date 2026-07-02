@@ -57,7 +57,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
-import { getAnswerExamDetailApi, saveAnswerApi, submitAnswerApi } from '@/api/modules/answer'
+import { getAnswerExamDetailApi, reportSwitchCountApi, saveAnswerApi, submitAnswerApi } from '@/api/modules/answer'
 import AnswerSheet from '@/components/common/AnswerSheet.vue'
 import PageContainer from '@/components/common/PageContainer.vue'
 import QuestionRenderer from '@/components/common/QuestionRenderer.vue'
@@ -139,6 +139,13 @@ function persistSwitchCount() {
   }
 }
 
+async function reportSwitchCount() {
+  if (!antiSwitchEnabled.value || !examId) {
+    return
+  }
+  await reportSwitchCountApi(examId, switchCount.value).catch(() => undefined)
+}
+
 function clearSwitchCount() {
   const cacheKey = buildSwitchCountCacheKey()
   if (cacheKey) {
@@ -195,7 +202,7 @@ async function triggerForcedSubmit(reason: string) {
   }
 }
 
-function recordSwitchViolation(reason: string) {
+async function recordSwitchViolation(reason: string) {
   if (!antiSwitchEnabled.value || examFinished.value || isSubmitting.value) {
     return
   }
@@ -207,9 +214,11 @@ function recordSwitchViolation(reason: string) {
   switchCount.value += 1
   persistSwitchCount()
   if (switchCount.value > Number(maxSwitchCount.value)) {
-    void triggerForcedSubmit(reason)
+    await reportSwitchCount()
+    await triggerForcedSubmit(reason)
     return
   }
+  void reportSwitchCount()
   ElMessage.warning(`检测到切屏 ${switchCount.value} 次，超过 ${maxSwitchCount.value} 次将自动交卷`)
 }
 
@@ -238,6 +247,7 @@ async function loadData() {
   examDetail.value = examResult.data
   questions.value = examResult.data.questions || []
   loadSwitchCount()
+  void reportSwitchCount()
 
   syncCountdown()
   timer = window.setInterval(syncCountdown, 1000)
@@ -274,13 +284,13 @@ function handleBeforeUnload(event: BeforeUnloadEvent) {
 
 function handleVisibilityChange() {
   if (document.visibilityState === 'hidden') {
-    recordSwitchViolation('切屏次数已超过限制，系统已自动交卷')
+    void recordSwitchViolation('切屏次数已超过限制，系统已自动交卷')
   }
 }
 
 function handleWindowBlur() {
   if (!document.hidden) {
-    recordSwitchViolation('切屏次数已超过限制，系统已自动交卷')
+    void recordSwitchViolation('切屏次数已超过限制，系统已自动交卷')
   }
 }
 
@@ -302,7 +312,7 @@ onBeforeRouteLeave(() => {
   if (!antiSwitchEnabled.value || examFinished.value || isSubmitting.value) {
     return true
   }
-  recordSwitchViolation('切屏次数已超过限制，系统已自动交卷')
+  void recordSwitchViolation('切屏次数已超过限制，系统已自动交卷')
   return false
 })
 

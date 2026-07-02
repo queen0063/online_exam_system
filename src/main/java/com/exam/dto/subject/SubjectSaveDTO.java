@@ -12,7 +12,6 @@ public class SubjectSaveDTO {
 
     private Long id;
 
-    @NotBlank(message = "科目编码不能为空")
     private String subjectCode;
 
     @NotBlank(message = "科目名称不能为空")

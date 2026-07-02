@@ -37,13 +37,13 @@ public class ClassInfoController {
     }
 
     @GetMapping("/manage")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
     public Result<List<ClassInfoVO>> manageList() {
         return Result.success(classInfoService.listAll());
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
     @OperationLog(module = "班级管理", description = "保存班级", operationType = OperationTypeEnum.CREATE)
     public Result<Void> save(@Valid @RequestBody ClassInfoSaveDTO classInfoSaveDTO) {
         classInfoService.save(classInfoSaveDTO);
@@ -51,7 +51,7 @@ public class ClassInfoController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
     @OperationLog(module = "班级管理", description = "删除班级", operationType = OperationTypeEnum.DELETE)
     public Result<Void> remove(@PathVariable Long id) {
         classInfoService.remove(id);

@@ -39,5 +39,5 @@ VALUES (1, 1, 1, 5, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
 INSERT INTO exam(id, exam_name, paper_id, subject_id, creator_id, start_time, end_time, duration_minutes, pass_score, status, result_published, create_time, update_time, deleted)
 VALUES (1, 'Java后端期中考试', 1, 1, 2, DATEADD('HOUR', -1, CURRENT_TIMESTAMP), DATEADD('DAY', 1, CURRENT_TIMESTAMP), 60, 24, 'IN_PROGRESS', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0);
 
-INSERT INTO exam_student(id, exam_id, student_id, answer_status, create_time, update_time, deleted)
-VALUES (1, 1, 3, 'NOT_STARTED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0);
+INSERT INTO exam_student(id, exam_id, student_id, answer_status, switch_count, create_time, update_time, deleted)
+VALUES (1, 1, 3, 'NOT_STARTED', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0);

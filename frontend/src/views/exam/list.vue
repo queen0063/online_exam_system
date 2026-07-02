@@ -35,10 +35,11 @@
             <status-tag :value="row.status" :map="statusMap" />
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="340" fixed="right">
+        <el-table-column label="操作" width="380" fixed="right">
           <template #default="{ row }">
             <div class="actions">
               <el-button link type="primary" @click="showDetail(row)">详情</el-button>
+              <el-button link type="primary" @click="openMonitor(row)">监测</el-button>
               <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
               <el-button link type="success" @click="handlePublish(row)">发布</el-button>
               <el-button link type="warning" @click="handlePublishScore(row)">发布成绩</el-button>
@@ -133,6 +134,7 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 
 import { getClassListApi } from '@/api/modules/classInfo'
@@ -156,6 +158,7 @@ const statusMap = EXAM_STATUS_OPTIONS.reduce<Record<string, string>>((map, item)
 }, {})
 
 const loading = ref(false)
+const router = useRouter()
 const dialogLoading = ref(false)
 const submitLoading = ref(false)
 const dialogVisible = ref(false)
@@ -294,6 +297,10 @@ async function openDialog(row?: ExamRecord) {
 function showDetail(row: ExamRecord) {
   currentRow.value = row
   detailVisible.value = true
+}
+
+function openMonitor(row: ExamRecord) {
+  router.push(`/exam/monitor/${row.id}`)
 }
 
 async function handleSubmit() {

@@ -3,6 +3,7 @@ package com.exam.service.impl;
 import com.exam.common.api.ResultCode;
 import com.exam.common.enums.RoleCode;
 import com.exam.common.exception.BusinessException;
+import com.exam.common.util.CodeGenerateUtils;
 import com.exam.dto.classinfo.ClassInfoSaveDTO;
 import com.exam.entity.ClassInfo;
 import com.exam.entity.SysRole;
@@ -32,7 +33,13 @@ public class ClassInfoServiceImpl implements ClassInfoService {
 
     @Override
     public List<ClassInfoVO> listAll() {
-        return classInfoMapper.selectAll().stream()
+        boolean admin = SecurityContextUtils.hasAnyRole("ADMIN");
+        List<ClassInfo> classes = admin
+                ? classInfoMapper.selectAll()
+                : classInfoMapper.selectAll().stream()
+                        .filter(classInfo -> SecurityContextUtils.getUserId().equals(classInfo.getTeacherId()))
+                        .toList();
+        return classes.stream()
                 .map(this::toVO)
                 .toList();
     }
@@ -48,16 +55,19 @@ public class ClassInfoServiceImpl implements ClassInfoService {
     @Transactional(rollbackFor = Exception.class)
     @Override
     public void save(ClassInfoSaveDTO classInfoSaveDTO) {
-        ClassInfo sameCode = classInfoMapper.selectByCode(classInfoSaveDTO.getClassCode());
-        if (sameCode != null && !sameCode.getId().equals(classInfoSaveDTO.getId())) {
-            throw new BusinessException(ResultCode.BAD_REQUEST, "班级编码已存在");
-        }
-        validateTeacher(classInfoSaveDTO.getTeacherId());
+        boolean admin = SecurityContextUtils.hasAnyRole("ADMIN");
+        Long teacherId = admin ? classInfoSaveDTO.getTeacherId() : SecurityContextUtils.getUserId();
+        validateTeacher(teacherId);
         ClassInfo classInfo = classInfoSaveDTO.getId() == null ? new ClassInfo() : getClassInfo(classInfoSaveDTO.getId());
-        classInfo.setClassCode(classInfoSaveDTO.getClassCode());
+        if (!admin && classInfo.getId() != null && !SecurityContextUtils.getUserId().equals(classInfo.getTeacherId())) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "教师只能编辑自己负责的班级");
+        }
+        if (classInfoSaveDTO.getId() == null) {
+            classInfo.setClassCode(CodeGenerateUtils.generate("CLS", code -> classInfoMapper.selectByCode(code) != null));
+        }
         classInfo.setClassName(classInfoSaveDTO.getClassName());
         classInfo.setGradeName(classInfoSaveDTO.getGradeName());
-        classInfo.setTeacherId(classInfoSaveDTO.getTeacherId());
+        classInfo.setTeacherId(teacherId);
         classInfo.setStatus(classInfoSaveDTO.getStatus());
         classInfo.setUpdateTime(LocalDateTime.now());
         if (classInfoSaveDTO.getId() == null) {
@@ -72,7 +82,11 @@ public class ClassInfoServiceImpl implements ClassInfoService {
     @Transactional(rollbackFor = Exception.class)
     @Override
     public void remove(Long id) {
-        getClassInfo(id);
+        ClassInfo classInfo = getClassInfo(id);
+        if (!SecurityContextUtils.hasAnyRole("ADMIN")
+                && !SecurityContextUtils.getUserId().equals(classInfo.getTeacherId())) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "教师只能删除自己负责的班级");
+        }
         classInfoMapper.logicDeleteById(id);
     }
 

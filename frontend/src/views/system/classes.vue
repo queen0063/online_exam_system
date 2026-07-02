@@ -22,9 +22,10 @@
         <el-table-column label="创建时间" min-width="180">
           <template #default="{ row }">{{ formatDateTime(row.createTime) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="180">
+        <el-table-column label="操作" width="260">
           <template #default="{ row }">
             <div class="actions">
+              <el-button v-if="row.status === 1" link type="success" @click="copyRegisterLink(row)">注册链接</el-button>
               <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
               <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
             </div>
@@ -35,8 +36,8 @@
 
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑班级' : '新增班级'" width="560px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="88px">
-        <el-form-item label="班级编码" prop="classCode">
-          <el-input v-model="form.classCode" placeholder="如 CS-2026-01" />
+        <el-form-item v-if="form.id" label="班级编码">
+          <el-input v-model="form.classCode" disabled />
         </el-form-item>
         <el-form-item label="班级名称" prop="className">
           <el-input v-model="form.className" placeholder="如 计算机一班" />
@@ -44,10 +45,13 @@
         <el-form-item label="年级">
           <el-input v-model="form.gradeName" placeholder="如 2026级" />
         </el-form-item>
-        <el-form-item label="负责教师">
+        <el-form-item v-if="isAdmin" label="负责教师">
           <el-select v-model="form.teacherId" clearable filterable class="w-full" placeholder="请选择负责教师">
             <el-option v-for="item in teacherOptions" :key="item.id" :label="item.realName" :value="item.id" />
           </el-select>
+        </el-form-item>
+        <el-form-item v-else label="负责教师">
+          <el-input :model-value="userStore.userInfo?.realName || '-'" disabled />
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="form.status">
@@ -65,13 +69,15 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 
+import { getRegisterInviteLinkApi } from '@/api/modules/auth'
 import { deleteClassApi, getClassManageListApi, saveClassApi } from '@/api/modules/classInfo'
 import { getUserPageApi } from '@/api/modules/user'
 import PageContainer from '@/components/common/PageContainer.vue'
 import CommonTable from '@/components/table/CommonTable.vue'
+import { useUserStore } from '@/stores/user'
 import { formatDateTime } from '@/utils/format'
 import type { ClassInfoRecord, UserRecord } from '@/types'
 
@@ -81,6 +87,8 @@ type ClassForm = Omit<ClassInfoRecord, 'teacherId'> & {
 
 const classList = ref<ClassInfoRecord[]>([])
 const teacherOptions = ref<UserRecord[]>([])
+const userStore = useUserStore()
+const isAdmin = computed(() => userStore.roleCodes.includes('ADMIN'))
 const dialogVisible = ref(false)
 const formRef = ref<FormInstance>()
 const form = reactive<ClassForm>({
@@ -93,7 +101,6 @@ const form = reactive<ClassForm>({
 })
 
 const rules: FormRules = {
-  classCode: [{ required: true, message: '请输入班级编码', trigger: 'blur' }],
   className: [{ required: true, message: '请输入班级名称', trigger: 'blur' }],
   status: [{ required: true, message: '请选择状态', trigger: 'change' }]
 }
@@ -104,6 +111,18 @@ async function loadData() {
 }
 
 async function loadTeachers() {
+  if (!isAdmin.value) {
+    teacherOptions.value = userStore.userInfo
+      ? [{
+          id: userStore.userInfo.userId,
+          username: userStore.userInfo.username,
+          realName: userStore.userInfo.realName,
+          status: 1,
+          roles: []
+        }]
+      : []
+    return
+  }
   const result = await getUserPageApi({ pageNum: 1, pageSize: 1000, status: 1 })
   teacherOptions.value = result.data.records.filter((item) =>
     item.roles?.some((role) => role.roleCode === 'TEACHER')
@@ -122,7 +141,7 @@ function openDialog(row?: ClassInfoRecord) {
   form.classCode = row?.classCode || ''
   form.className = row?.className || ''
   form.gradeName = row?.gradeName || ''
-  form.teacherId = row?.teacherId || ''
+  form.teacherId = row?.teacherId || (isAdmin.value ? '' : userStore.userInfo?.userId || '')
   form.status = row?.status ?? 1
   dialogVisible.value = true
 }
@@ -146,6 +165,16 @@ async function handleDelete(row: ClassInfoRecord) {
   await deleteClassApi(Number(row.id))
   ElMessage.success('删除成功')
   loadData()
+}
+
+async function copyRegisterLink(row: ClassInfoRecord) {
+  if (!row.id) {
+    return
+  }
+  const result = await getRegisterInviteLinkApi(row.id)
+  const link = `${window.location.origin}${result.data.registerUrl}`
+  await navigator.clipboard.writeText(link)
+  ElMessage.success('注册链接已复制')
 }
 
 onMounted(() => {

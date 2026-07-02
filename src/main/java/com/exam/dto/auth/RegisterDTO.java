@@ -27,6 +27,8 @@ public class RegisterDTO {
 
     private Long classId;
 
+    private String inviteCode;
+
     private String phone;
 
     private String email;

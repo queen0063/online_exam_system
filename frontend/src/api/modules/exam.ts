@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { ExamRecord, PageResult } from '@/types'
+import type { ExamMonitorRecord, ExamRecord, PageResult } from '@/types'
 
 export interface ExamQuery {
   pageNum?: number
@@ -18,6 +18,10 @@ export function getMyExamPageApi(params: ExamQuery) {
 
 export function getExamDetailApi(id: number) {
   return request.get<ExamRecord, { data: ExamRecord }>(`/exams/${id}`)
+}
+
+export function getExamMonitoringApi(id: number) {
+  return request.get<ExamMonitorRecord[], { data: ExamMonitorRecord[] }>(`/exams/${id}/monitoring`)
 }
 
 export interface ExamSavePayload {

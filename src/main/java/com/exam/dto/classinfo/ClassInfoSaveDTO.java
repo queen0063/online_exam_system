@@ -12,7 +12,6 @@ public class ClassInfoSaveDTO {
 
     private Long id;
 
-    @NotBlank(message = "班级编码不能为空")
     private String classCode;
 
     @NotBlank(message = "班级名称不能为空")

@@ -15,11 +15,6 @@
       </div>
 
       <div class="two-column">
-        <chart-card title="趋势统计" description="近 7 天业务数据趋势" :option="trendOption" />
-        <chart-card title="结构占比" description="当前角色关注的业务构成" :option="pieOption" />
-      </div>
-
-      <div class="two-column">
         <div class="app-card dashboard__notice">
           <div class="dashboard__section-title">最新公告</div>
           <el-empty v-if="notices.length === 0" description="暂无公告" />
@@ -46,11 +41,9 @@
 
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import { computed, onMounted, ref } from 'vue'
-import type { EChartsOption } from 'echarts'
+import { onMounted, ref } from 'vue'
 
 import { getAnswerExamPageApi } from '@/api/modules/answer'
-import ChartCard from '@/components/chart/ChartCard.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import PageContainer from '@/components/common/PageContainer.vue'
 import { getExamPageApi } from '@/api/modules/exam'
@@ -58,7 +51,7 @@ import { getPendingMarkingApi } from '@/api/modules/marking'
 import { getNoticePageApi } from '@/api/modules/notice'
 import { getPaperPageApi } from '@/api/modules/paper'
 import { getQuestionPageApi, getWrongQuestionApi } from '@/api/modules/question'
-import { getMyScorePageApi, getScorePageApi } from '@/api/modules/score'
+import { getMyScorePageApi } from '@/api/modules/score'
 import { getUserPageApi } from '@/api/modules/user'
 import { useUserStore } from '@/stores/user'
 import { formatDateTime } from '@/utils/format'
@@ -68,10 +61,7 @@ const userStore = useUserStore()
 const cards = ref<Array<{ title: string; value: string; foot: string; icon: string; bg: string }>>([])
 const notices = ref<NoticeRecord[]>([])
 const todos = ref<Array<{ title: string; description: string }>>([])
-const trendData = ref<number[]>(Array(7).fill(0))
-const pieData = ref<Array<{ value: number; name: string }>>([])
 
-const WEEK_LABELS = Array.from({ length: 7 }, (_, index) => dayjs().subtract(6 - index, 'day').format('MM-DD'))
 const CARD_BACKGROUNDS = [
   'rgba(15, 108, 189, 0.1)',
   'rgba(16, 124, 16, 0.1)',
@@ -79,61 +69,12 @@ const CARD_BACKGROUNDS = [
   'rgba(139, 92, 246, 0.1)'
 ]
 
-const trendOption = computed<EChartsOption>(() => ({
-  tooltip: { trigger: 'axis' },
-  grid: { left: 36, right: 18, top: 36, bottom: 24 },
-  xAxis: {
-    type: 'category',
-    boundaryGap: false,
-    data: WEEK_LABELS
-  },
-  yAxis: { type: 'value' },
-  series: [
-    {
-      type: 'line',
-      smooth: true,
-      data: trendData.value,
-      areaStyle: {
-        color: 'rgba(15, 108, 189, 0.1)'
-      },
-      lineStyle: {
-        color: '#0f6cbd'
-      },
-      itemStyle: {
-        color: '#0f6cbd'
-      }
-    }
-  ]
-}))
-
-const pieOption = computed<EChartsOption>(() => ({
-  tooltip: { trigger: 'item' },
-  legend: { bottom: 0 },
-  series: [
-    {
-      type: 'pie',
-      radius: ['45%', '72%'],
-      center: ['50%', '46%'],
-      itemStyle: {
-        borderRadius: 10,
-        borderColor: '#fff',
-        borderWidth: 4
-      },
-      data: pieData.value
-    }
-  ]
-}))
-
 function formatCount(value: number, digits = 0) {
   return digits > 0 ? value.toFixed(digits) : String(value)
 }
 
 function isFinishedAnswerStatus(status?: string) {
   return ['SUBMITTED', 'WAIT_MARKING', 'MARKED'].includes(status || '')
-}
-
-function buildDailyCounts(values: Array<string | undefined>) {
-  return WEEK_LABELS.map((label) => values.filter((value) => value && dayjs(value).format('MM-DD') === label).length)
 }
 
 function sortByTimeDesc<T>(records: T[], getter: (record: T) => string | undefined) {
@@ -162,21 +103,6 @@ async function loadAdminDashboard() {
     { title: '题目总数', value: formatCount(questionResult.data.total), foot: '数据库题库总量', icon: 'EditPen', bg: CARD_BACKGROUNDS[3] }
   ]
 
-  trendData.value = buildDailyCounts([
-    ...userResult.data.records.map((item) => item.createTime),
-    ...examResult.data.records.map((item) => item.startTime),
-    ...paperResult.data.records.map((item) => item.createTime),
-    ...questionResult.data.records.map((item) => item.createTime),
-    ...latestNotices.map((item) => item.createTime)
-  ])
-
-  pieData.value = [
-    { value: questionResult.data.total, name: '题库题目' },
-    { value: paperResult.data.total, name: '试卷资源' },
-    { value: examResult.data.total, name: '考试记录' },
-    { value: noticeResult.data.total, name: '已发布公告' }
-  ]
-
   const upcomingExam = sortByClosestFutureExam(examResult.data.records.filter((item) => dayjs(item.startTime).isAfter(dayjs())))[0]
   todos.value = [
     {
@@ -195,42 +121,22 @@ async function loadAdminDashboard() {
 }
 
 async function loadTeacherDashboard() {
-  const [examResult, paperResult, pendingResult, scoreResult, noticeResult] = await Promise.all([
+  const [examResult, paperResult, pendingResult, noticeResult] = await Promise.all([
     getExamPageApi({ pageNum: 1, pageSize: 1000 }),
     getPaperPageApi({ pageNum: 1, pageSize: 1000 }),
     getPendingMarkingApi({ pageNum: 1, pageSize: 1000 }),
-    getScorePageApi({ pageNum: 1, pageSize: 1000 }),
     getNoticePageApi({ pageNum: 1, pageSize: 5, noticeStatus: 'PUBLISHED' })
   ])
 
   const examRecords = examResult.data.records
-  const paperRecords = paperResult.data.records
-  const scoreRecords = scoreResult.data.records
   const latestNotices = sortByTimeDesc(noticeResult.data.records, (item) => item.createTime)
   const draftCount = examRecords.filter((item) => item.status === 'DRAFT').length
-  const averageScore = scoreRecords.length
-    ? scoreRecords.reduce((sum, item) => sum + (item.totalScore || 0), 0) / scoreRecords.length
-    : 0
 
   notices.value = latestNotices
   cards.value = [
     { title: '我的考试', value: formatCount(examResult.data.total), foot: `其中 ${draftCount} 场草稿`, icon: 'Notebook', bg: CARD_BACKGROUNDS[0] },
     { title: '我的试卷', value: formatCount(paperResult.data.total), foot: '数据库中归属教师的试卷', icon: 'CollectionTag', bg: CARD_BACKGROUNDS[1] },
-    { title: '待阅卷', value: formatCount(pendingResult.data.total), foot: '当前待处理答卷数', icon: 'Finished', bg: CARD_BACKGROUNDS[2] },
-    { title: '平均得分', value: formatCount(averageScore, 1), foot: '按现有成绩记录计算', icon: 'TrendCharts', bg: CARD_BACKGROUNDS[3] }
-  ]
-
-  trendData.value = buildDailyCounts([
-    ...examRecords.map((item) => item.startTime),
-    ...paperRecords.map((item) => item.createTime),
-    ...scoreRecords.map((item) => item.publishTime)
-  ])
-
-  pieData.value = [
-    { value: pendingResult.data.total, name: '待阅卷' },
-    { value: examResult.data.total, name: '我的考试' },
-    { value: paperResult.data.total, name: '我的试卷' },
-    { value: scoreResult.data.total, name: '成绩记录' }
+    { title: '待阅卷', value: formatCount(pendingResult.data.total), foot: '当前待处理答卷数', icon: 'Finished', bg: CARD_BACKGROUNDS[2] }
   ]
 
   const nextExam = sortByClosestFutureExam(
@@ -283,19 +189,6 @@ async function loadStudentDashboard() {
     { title: '公告提醒', value: formatCount(noticeResult.data.total), foot: '数据库中已发布公告数量', icon: 'Bell', bg: CARD_BACKGROUNDS[3] }
   ]
 
-  trendData.value = buildDailyCounts([
-    ...examRecords.map((item) => item.startTime),
-    ...latestScores.map((item) => item.publishTime),
-    ...wrongRecords.map((item) => item.submitTime)
-  ])
-
-  pieData.value = [
-    { value: pendingExamCount, name: '待考试' },
-    { value: ongoingExamCount, name: '进行中' },
-    { value: scoreResult.data.total, name: '成绩记录' },
-    { value: wrongRecords.length, name: '错题数量' }
-  ]
-
   const nearestExam = sortByClosestFutureExam(
     examRecords.filter((item) => !isFinishedAnswerStatus(item.answerStatus) && dayjs(item.endTime).isAfter(now))
   )[0]
@@ -332,8 +225,6 @@ async function loadDashboard() {
     cards.value = []
     notices.value = []
     todos.value = []
-    trendData.value = Array(7).fill(0)
-    pieData.value = []
   }
 }
 

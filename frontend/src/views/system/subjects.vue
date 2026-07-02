@@ -1,5 +1,5 @@
 <template>
-  <page-container title="科目管理" description="维护题库、试卷和考试可选择的科目。">
+  <page-container title="科目管理" description="维护题库、试卷和考试可选择的科目，科目编码由系统自动生成。">
     <div class="actions">
       <el-button type="success" @click="openDialog()">新增科目</el-button>
     </div>
@@ -30,8 +30,8 @@
 
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑科目' : '新增科目'" width="560px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="88px">
-        <el-form-item label="科目编码" prop="subjectCode">
-          <el-input v-model="form.subjectCode" placeholder="如 JAVA" />
+        <el-form-item v-if="form.id" label="科目编码">
+          <el-input v-model="form.subjectCode" disabled />
         </el-form-item>
         <el-form-item label="科目名称" prop="subjectName">
           <el-input v-model="form.subjectName" placeholder="如 Java程序设计" />
@@ -76,7 +76,6 @@ const form = reactive<SubjectRecord>({
 })
 
 const rules: FormRules = {
-  subjectCode: [{ required: true, message: '请输入科目编码', trigger: 'blur' }],
   subjectName: [{ required: true, message: '请输入科目名称', trigger: 'blur' }],
   status: [{ required: true, message: '请选择状态', trigger: 'change' }]
 }

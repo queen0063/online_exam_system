@@ -7,7 +7,7 @@ spring:
   application:
     name: online-exam-system-backend
   datasource:
-    url: jdbc:mysql://localhost:3306/online_exam_system?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&connectionTimeZone=GMT%2B8&forceConnectionTimeZoneToSession=true&useSSL=false
+    url: jdbc:mysql://localhost:3306/online_exam_system?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&connectionTimeZone=GMT%2B8&forceConnectionTimeZoneToSession=true&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: your_password_here
     driver-class-name: com.mysql.cj.jdbc.Driver

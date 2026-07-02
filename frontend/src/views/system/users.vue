@@ -1,5 +1,5 @@
 <template>
-  <page-container title="用户管理" description="管理员可维护系统用户、重置密码并分配角色。">
+  <page-container :title="isAdmin ? '用户管理' : '学生管理'" :description="isAdmin ? '管理员可维护系统用户、重置密码并分配角色。' : '查看通过专属注册链接加入自己班级的学生。'">
     <query-bar>
       <el-form :model="queryForm" inline>
         <el-form-item label="关键字">
@@ -10,12 +10,12 @@
             <el-option v-for="item in classOptions" :key="item.id" :label="classLabel(item)" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="角色">
+        <el-form-item v-if="isAdmin" label="角色">
           <el-select v-model="queryForm.roleId" placeholder="全部角色" clearable style="width: 180px">
             <el-option v-for="item in roleOptions" :key="item.id" :label="item.roleName" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="状态">
+        <el-form-item v-if="isAdmin" label="状态">
           <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 140px">
             <el-option label="启用" :value="1" />
             <el-option label="禁用" :value="0" />
@@ -25,7 +25,7 @@
       <template #actions>
         <el-button @click="resetQuery">重置</el-button>
         <el-button type="primary" @click="loadData">查询</el-button>
-        <el-button type="success" @click="openDialog()">新增用户</el-button>
+        <el-button v-if="isAdmin" type="success" @click="openDialog()">新增用户</el-button>
       </template>
     </query-bar>
 
@@ -59,13 +59,13 @@
             {{ formatDateTime(row.createTime) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" :width="isAdmin ? 280 : 90" fixed="right">
           <template #default="{ row }">
             <div class="actions">
               <el-button link type="primary" @click="showDetail(row)">详情</el-button>
-              <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
-              <el-button link type="warning" @click="handleResetPassword(row)">重置密码</el-button>
-              <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+              <el-button v-if="isAdmin" link type="primary" @click="openDialog(row)">编辑</el-button>
+              <el-button v-if="isAdmin" link type="warning" @click="handleResetPassword(row)">重置密码</el-button>
+              <el-button v-if="isAdmin" link type="danger" @click="handleDelete(row)">删除</el-button>
             </div>
           </template>
         </el-table-column>
@@ -141,18 +141,19 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 
 import { getClassListApi } from '@/api/modules/classInfo'
 import { getRoleListApi } from '@/api/modules/role'
-import { deleteUserApi, getUserPageApi, resetPasswordApi, saveUserApi } from '@/api/modules/user'
+import { deleteUserApi, getStudentListApi, getUserPageApi, resetPasswordApi, saveUserApi } from '@/api/modules/user'
 import PageContainer from '@/components/common/PageContainer.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import QueryBar from '@/components/form/QueryBar.vue'
 import CommonPagination from '@/components/table/CommonPagination.vue'
 import CommonTable from '@/components/table/CommonTable.vue'
 import { usePagination } from '@/hooks/usePagination'
+import { useUserStore } from '@/stores/user'
 import { formatDateTime } from '@/utils/format'
 import type { ClassInfoRecord, RoleItem, UserRecord } from '@/types'
 
@@ -165,6 +166,8 @@ const tableData = ref<UserRecord[]>([])
 const roleOptions = ref<RoleItem[]>([])
 const classOptions = ref<ClassInfoRecord[]>([])
 const currentRow = ref<UserRecord>()
+const userStore = useUserStore()
+const isAdmin = computed(() => userStore.roleCodes.includes('ADMIN'))
 
 const { pagination, updatePagination } = usePagination()
 
@@ -199,6 +202,10 @@ const rules: FormRules = {
 }
 
 async function loadRoles() {
+  if (!isAdmin.value) {
+    roleOptions.value = []
+    return
+  }
   const result = await getRoleListApi()
   roleOptions.value = result.data
 }
@@ -223,13 +230,22 @@ function className(classId?: number) {
 async function loadData() {
   loading.value = true
   try {
-    const result = await getUserPageApi({
-      pageNum: pagination.pageNum,
-      pageSize: pagination.pageSize,
-      ...queryForm
-    })
-    tableData.value = result.data.records
-    updatePagination(result.data.total, result.data.pageNum, result.data.pageSize)
+    if (isAdmin.value) {
+      const result = await getUserPageApi({
+        pageNum: pagination.pageNum,
+        pageSize: pagination.pageSize,
+        ...queryForm
+      })
+      tableData.value = result.data.records
+      updatePagination(result.data.total, result.data.pageNum, result.data.pageSize)
+    } else {
+      const result = await getStudentListApi({
+        keyword: queryForm.keyword,
+        classId: queryForm.classId
+      })
+      tableData.value = result.data
+      updatePagination(result.data.length, 1, Math.max(result.data.length, 10))
+    }
   } finally {
     loading.value = false
   }

@@ -2,6 +2,7 @@ package com.exam.service.impl;
 
 import com.exam.common.api.ResultCode;
 import com.exam.common.exception.BusinessException;
+import com.exam.common.util.CodeGenerateUtils;
 import com.exam.dto.subject.SubjectSaveDTO;
 import com.exam.entity.Subject;
 import com.exam.mapper.SubjectMapper;
@@ -32,12 +33,10 @@ public class SubjectServiceImpl implements SubjectService {
     @Transactional(rollbackFor = Exception.class)
     @Override
     public void save(SubjectSaveDTO subjectSaveDTO) {
-        Subject sameCode = subjectMapper.selectByCode(subjectSaveDTO.getSubjectCode());
-        if (sameCode != null && !sameCode.getId().equals(subjectSaveDTO.getId())) {
-            throw new BusinessException(ResultCode.BAD_REQUEST, "科目编码已存在");
-        }
         Subject subject = subjectSaveDTO.getId() == null ? new Subject() : getSubject(subjectSaveDTO.getId());
-        subject.setSubjectCode(subjectSaveDTO.getSubjectCode());
+        if (subjectSaveDTO.getId() == null) {
+            subject.setSubjectCode(CodeGenerateUtils.generate("SUB", code -> subjectMapper.selectByCode(code) != null));
+        }
         subject.setSubjectName(subjectSaveDTO.getSubjectName());
         subject.setDescription(subjectSaveDTO.getDescription());
         subject.setStatus(subjectSaveDTO.getStatus());

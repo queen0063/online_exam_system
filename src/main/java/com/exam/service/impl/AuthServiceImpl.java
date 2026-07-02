@@ -16,15 +16,23 @@ import com.exam.mapper.SysUserMapper;
 import com.exam.mapper.SysUserRoleMapper;
 import com.exam.security.context.SecurityContextUtils;
 import com.exam.security.context.SecurityUser;
+import com.exam.security.jwt.JwtProperties;
 import com.exam.security.jwt.JwtTokenProvider;
 import com.exam.service.AuthService;
 import com.exam.service.LoginLogService;
 import com.exam.vo.auth.LoginVO;
+import com.exam.vo.auth.RegisterInviteVO;
 import com.exam.vo.classinfo.ClassInfoVO;
 import com.exam.vo.user.CurrentUserVO;
 import jakarta.servlet.http.HttpServletRequest;
+import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +50,7 @@ public class AuthServiceImpl implements AuthService {
     private final ClassInfoMapper classInfoMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final JwtProperties jwtProperties;
     private final LoginLogService loginLogService;
 
     public AuthServiceImpl(
@@ -51,6 +60,7 @@ public class AuthServiceImpl implements AuthService {
             ClassInfoMapper classInfoMapper,
             PasswordEncoder passwordEncoder,
             JwtTokenProvider jwtTokenProvider,
+            JwtProperties jwtProperties,
             LoginLogService loginLogService) {
         this.sysUserMapper = sysUserMapper;
         this.sysRoleMapper = sysRoleMapper;
@@ -58,6 +68,7 @@ public class AuthServiceImpl implements AuthService {
         this.classInfoMapper = classInfoMapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.jwtProperties = jwtProperties;
         this.loginLogService = loginLogService;
     }
 
@@ -101,17 +112,11 @@ public class AuthServiceImpl implements AuthService {
             if (!StringUtils.hasText(registerDTO.getStudentNo())) {
                 throw new BusinessException(ResultCode.BAD_REQUEST, "学生注册必须填写学号");
             }
-            if (registerDTO.getClassId() == null) {
-                throw new BusinessException(ResultCode.BAD_REQUEST, "学生注册必须选择班级");
-            }
+            RegisterInviteVO invite = getRegisterInvite(registerDTO.getInviteCode());
             if (sysUserMapper.selectByStudentNo(registerDTO.getStudentNo().trim()) != null) {
                 throw new BusinessException(ResultCode.BAD_REQUEST, "学号已存在");
             }
-            boolean classExists = classInfoMapper.selectVisible(null, true).stream()
-                    .anyMatch(classInfo -> classInfo.getId().equals(registerDTO.getClassId()));
-            if (!classExists) {
-                throw new BusinessException(ResultCode.BAD_REQUEST, "班级不存在或已停用");
-            }
+            registerDTO.setClassId(invite.getClassId());
         } else if (StringUtils.hasText(registerDTO.getStudentNo())) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "教师注册不能填写学号");
         }
@@ -130,7 +135,7 @@ public class AuthServiceImpl implements AuthService {
         user.setPhone(normalizeBlank(registerDTO.getPhone()));
         user.setEmail(normalizeBlank(registerDTO.getEmail()));
         user.setClassId(RoleCode.STUDENT.name().equals(roleCode) ? registerDTO.getClassId() : null);
-        user.setStatus(RoleCode.STUDENT.name().equals(roleCode) ? 1 : 0);
+        user.setStatus(1);
         user.setCreateTime(now);
         user.setUpdateTime(now);
         user.setDeleted(0);
@@ -150,6 +155,57 @@ public class AuthServiceImpl implements AuthService {
         return classInfoMapper.selectVisible(null, true).stream()
                 .map(this::toClassInfoVO)
                 .toList();
+    }
+
+    @Override
+    public RegisterInviteVO getRegisterInvite(String inviteCode) {
+        if (!StringUtils.hasText(inviteCode)) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "学生注册必须使用教师专属注册链接");
+        }
+        String payload = parseInviteCode(inviteCode.trim());
+        String[] parts = payload.split(":");
+        if (parts.length != 2) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "注册链接无效");
+        }
+        Long classId = parseLong(parts[0], "注册链接无效");
+        Long teacherId = parseLong(parts[1], "注册链接无效");
+        ClassInfo classInfo = classInfoMapper.selectById(classId);
+        if (classInfo == null || classInfo.getStatus() == null || classInfo.getStatus() != 1) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "班级不存在或已停用");
+        }
+        if (classInfo.getTeacherId() == null || !classInfo.getTeacherId().equals(teacherId)) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "注册链接已失效，请联系教师重新获取");
+        }
+        SysUser teacher = sysUserMapper.selectById(teacherId);
+        if (teacher == null || teacher.getStatus() == null || teacher.getStatus() != 1) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "负责教师不存在或账号未启用");
+        }
+        return buildRegisterInviteVO(inviteCode.trim(), classInfo, teacher);
+    }
+
+    @Override
+    public RegisterInviteVO generateRegisterInvite(Long classId) {
+        ClassInfo classInfo = classInfoMapper.selectById(classId);
+        if (classInfo == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "班级不存在");
+        }
+        if (classInfo.getStatus() == null || classInfo.getStatus() != 1) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "停用班级不能生成注册链接");
+        }
+        if (classInfo.getTeacherId() == null) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "班级未设置负责教师");
+        }
+        boolean admin = SecurityContextUtils.hasAnyRole(RoleCode.ADMIN.name());
+        Long currentUserId = SecurityContextUtils.getUserId();
+        if (!admin && !classInfo.getTeacherId().equals(currentUserId)) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "只能生成自己负责班级的注册链接");
+        }
+        SysUser teacher = sysUserMapper.selectById(classInfo.getTeacherId());
+        if (teacher == null || teacher.getStatus() == null || teacher.getStatus() != 1) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "负责教师不存在或账号未启用");
+        }
+        String inviteCode = createInviteCode(classInfo.getId(), classInfo.getTeacherId());
+        return buildRegisterInviteVO(inviteCode, classInfo, teacher);
     }
 
     @Override
@@ -222,6 +278,59 @@ public class AuthServiceImpl implements AuthService {
                 .status(classInfo.getStatus())
                 .createTime(classInfo.getCreateTime())
                 .build();
+    }
+
+    private RegisterInviteVO buildRegisterInviteVO(String inviteCode, ClassInfo classInfo, SysUser teacher) {
+        return RegisterInviteVO.builder()
+                .inviteCode(inviteCode)
+                .classId(classInfo.getId())
+                .className(classInfo.getClassName())
+                .gradeName(classInfo.getGradeName())
+                .teacherId(teacher.getId())
+                .teacherName(teacher.getRealName())
+                .registerUrl("/register?invite=" + inviteCode)
+                .build();
+    }
+
+    private String createInviteCode(Long classId, Long teacherId) {
+        String payload = classId + ":" + teacherId;
+        String payloadPart = base64Url(payload);
+        return payloadPart + "." + sign(payloadPart);
+    }
+
+    private String parseInviteCode(String inviteCode) {
+        String[] parts = inviteCode.split("\\.");
+        if (parts.length != 2 || !sign(parts[0]).equals(parts[1])) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "注册链接无效");
+        }
+        try {
+            return new String(Base64.getUrlDecoder().decode(parts[0]), StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "注册链接无效");
+        }
+    }
+
+    private String sign(String value) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            return Base64.getUrlEncoder().withoutPadding()
+                    .encodeToString(mac.doFinal(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException | InvalidKeyException ex) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "注册链接生成失败");
+        }
+    }
+
+    private String base64Url(String value) {
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(value.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private Long parseLong(String value, String message) {
+        try {
+            return Long.valueOf(value);
+        } catch (NumberFormatException ex) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, message);
+        }
     }
 
     private String normalizeBlank(String value) {

@@ -20,6 +20,7 @@ import com.exam.mapper.SysUserMapper;
 import com.exam.security.context.SecurityContextUtils;
 import com.exam.service.ExamService;
 import com.exam.vo.exam.ExamVO;
+import com.exam.vo.exam.ExamMonitorVO;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -80,6 +81,13 @@ public class ExamServiceImpl implements ExamService {
                 .map(ExamStudent::getStudentId)
                 .toList();
         return toVO(exam, studentIds);
+    }
+
+    @Override
+    public List<ExamMonitorVO> monitoring(Long id) {
+        Exam exam = getExam(id);
+        enforceOwnExam(exam);
+        return examStudentMapper.selectMonitoringByExamId(id);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -164,6 +172,7 @@ public class ExamServiceImpl implements ExamService {
             examStudent.setExamId(examId);
             examStudent.setStudentId(studentId);
             examStudent.setAnswerStatus(AnswerStatusEnum.NOT_STARTED.name());
+            examStudent.setSwitchCount(0);
             examStudent.setCreateTime(LocalDateTime.now());
             examStudent.setUpdateTime(LocalDateTime.now());
             examStudent.setDeleted(0);

@@ -30,14 +30,25 @@
                  inner join exam e on es.exam_id = e.id and e.deleted = 0
                  inner join sys_user u on es.student_id = u.id and u.deleted = 0
         where es.deleted = 0
-          and es.score_status = 'WAIT_MARKING'
+          and es.score_status in ('WAIT_MARKING', 'MARKED')
+          and e.result_published = 0
+          and exists (
+              select 1
+              from student_answer sa
+              where sa.deleted = 0
+                and sa.exam_id = es.exam_id
+                and sa.student_id = es.student_id
+                and sa.objective_flag = 0
+          )
         <if test="query.examId != null">
             and es.exam_id = #{query.examId}
         </if>
         <if test="!admin">
             and e.creator_id = #{teacherId}
         </if>
-        order by es.submit_time asc, es.id asc
+        order by case when es.score_status = 'WAIT_MARKING' then 0 else 1 end,
+                 es.submit_time asc,
+                 es.id asc
         limit #{offset}, #{query.pageSize}
     </select>
 
@@ -46,7 +57,16 @@
         from exam_score es
                  inner join exam e on es.exam_id = e.id and e.deleted = 0
         where es.deleted = 0
-          and es.score_status = 'WAIT_MARKING'
+          and es.score_status in ('WAIT_MARKING', 'MARKED')
+          and e.result_published = 0
+          and exists (
+              select 1
+              from student_answer sa
+              where sa.deleted = 0
+                and sa.exam_id = es.exam_id
+                and sa.student_id = es.student_id
+                and sa.objective_flag = 0
+          )
         <if test="query.examId != null">
             and es.exam_id = #{query.examId}
         </if>

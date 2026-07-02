@@ -20,7 +20,9 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -85,7 +87,7 @@ class ApiIntegrationTests {
     }
 
     @Test
-    void registeredTeacherShouldNotLoginBeforeEnabled() throws Exception {
+    void registeredTeacherShouldLoginAfterRegister() throws Exception {
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -110,8 +112,55 @@ class ApiIntegrationTests {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(401))
-                .andExpect(jsonPath("$.message").value("账号未启用，请联系管理员"));
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.token").isNotEmpty());
+    }
+
+    @Test
+    void studentShouldRegisterByTeacherInviteAndBindClass() throws Exception {
+        String teacherToken = loginAndGetToken("teacher", "Admin@123");
+        MvcResult inviteResult = mockMvc.perform(get("/auth/register/invite-link/1")
+                        .header("Authorization", "Bearer " + teacherToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.inviteCode").isNotEmpty())
+                .andExpect(jsonPath("$.data.classId").value(1))
+                .andReturn();
+
+        String inviteCode = objectMapper.readTree(inviteResult.getResponse().getContentAsString())
+                .path("data")
+                .path("inviteCode")
+                .asText();
+
+        mockMvc.perform(get("/auth/register/invite/" + inviteCode))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.teacherId").value(2))
+                .andExpect(jsonPath("$.data.classId").value(1));
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "invite_student",
+                                  "password": "Admin@123",
+                                  "realName": "邀请学生",
+                                  "roleCode": "STUDENT",
+                                  "studentNo": "20269999",
+                                  "classId": 999,
+                                  "inviteCode": "%s"
+                                }
+                                """.formatted(inviteCode)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        String studentToken = loginAndGetToken("invite_student", "Admin@123");
+        mockMvc.perform(get("/auth/me")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.classId").value(1))
+                .andExpect(jsonPath("$.data.className").value("软件工程一班"));
     }
 
     @Test
@@ -153,15 +202,66 @@ class ApiIntegrationTests {
     }
 
     @Test
-    void adminShouldSaveRole() throws Exception {
+    void teacherShouldManageSubjectWithGeneratedCode() throws Exception {
+        String token = loginAndGetToken("teacher", "Admin@123");
+        mockMvc.perform(post("/subjects")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "subjectName": "教师新增科目",
+                                  "description": "教师可维护科目",
+                                  "status": 1
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(get("/subjects")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.subjectName=='教师新增科目')].subjectCode").value(everyItem(startsWith("SUB"))));
+    }
+
+    @Test
+    void adminShouldSaveRecordsWithGeneratedCodes() throws Exception {
         String token = loginAndGetToken("admin", "Admin@123");
         mockMvc.perform(post("/roles")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "roleCode": "ASSISTANT_IT",
-                                  "roleName": "助教",
+                                  "roleCode": "MANUAL_ROLE_SHOULD_BE_IGNORED",
+                                  "roleName": "自动编码角色",
+                                  "status": 1
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(post("/subjects")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "subjectCode": "MANUAL_SUBJECT_SHOULD_BE_IGNORED",
+                                  "subjectName": "自动编码科目",
+                                  "description": "编码由系统生成",
+                                  "status": 1
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(post("/classes")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "classCode": "MANUAL_CLASS_SHOULD_BE_IGNORED",
+                                  "className": "自动编码班级",
+                                  "gradeName": "2026级",
+                                  "teacherId": 2,
                                   "status": 1
                                 }
                                 """))
@@ -171,7 +271,18 @@ class ApiIntegrationTests {
         mockMvc.perform(get("/roles")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(greaterThanOrEqualTo(4)));
+                .andExpect(jsonPath("$.data.length()").value(greaterThanOrEqualTo(4)))
+                .andExpect(jsonPath("$.data[?(@.roleName=='自动编码角色')].roleCode").value(everyItem(startsWith("ROLE"))));
+
+        mockMvc.perform(get("/subjects")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.subjectName=='自动编码科目')].subjectCode").value(everyItem(startsWith("SUB"))));
+
+        mockMvc.perform(get("/classes/manage")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.className=='自动编码班级')].classCode").value(everyItem(startsWith("CLS"))));
     }
 
     @Test
@@ -368,6 +479,38 @@ class ApiIntegrationTests {
         if (!matched) {
             throw new AssertionError("待阅卷列表中未找到学生提交的试卷");
         }
+
+        completeSubjectiveMarking(teacherToken, examId, 3L, 12);
+
+        MvcResult markedResult = mockMvc.perform(get("/marking/pending")
+                        .header("Authorization", "Bearer " + teacherToken)
+                        .param("examId", String.valueOf(examId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn();
+
+        JsonNode markedRoot = objectMapper.readTree(markedResult.getResponse().getContentAsString());
+        boolean markedMatched = false;
+        for (JsonNode item : markedRoot.path("data").path("records")) {
+            if (examId.equals(item.path("examId").asLong())
+                    && item.path("studentId").asLong() == 3L
+                    && "MARKED".equals(item.path("scoreStatus").asText())) {
+                markedMatched = true;
+                break;
+            }
+        }
+        if (!markedMatched) {
+            throw new AssertionError("阅卷列表中未找到已阅卷试卷");
+        }
+
+        publishExamScore(teacherToken, examId);
+
+        mockMvc.perform(get("/marking/pending")
+                        .header("Authorization", "Bearer " + teacherToken)
+                        .param("examId", String.valueOf(examId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.records.length()").value(0));
     }
 
     @Test
@@ -617,6 +760,82 @@ class ApiIntegrationTests {
 
         if (!studentExamExistsByName(studentToken, examName)) {
             throw new AssertionError("发布后学生考试列表中应可见该考试");
+        }
+    }
+
+    @Test
+    void teacherShouldMonitorAnsweringStudentSwitchCount() throws Exception {
+        String teacherToken = loginAndGetToken("teacher", "Admin@123");
+        String examName = "考试监测回归验证";
+        mockMvc.perform(post("/exams")
+                        .header("Authorization", "Bearer " + teacherToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(activeExamPayload(examName)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        Long publishedExamId = findTeacherExamIdByName(teacherToken, examName);
+        publishExam(teacherToken, publishedExamId);
+
+        String studentToken = loginAndGetToken("student", "Admin@123");
+        Long examId = findStudentExamIdByName(studentToken, examName);
+        mockMvc.perform(post("/answers/exams/" + examId + "/start")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(put("/answers/exams/" + examId + "/switch-count")
+                        .header("Authorization", "Bearer " + studentToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "switchCount": 3
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(get("/exams/" + examId + "/monitoring")
+                        .header("Authorization", "Bearer " + teacherToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data[0].studentId").value(3))
+                .andExpect(jsonPath("$.data[0].studentName").value("默认学生"))
+                .andExpect(jsonPath("$.data[0].answerStatus").value("ANSWERING"))
+                .andExpect(jsonPath("$.data[0].switchCount").value(3));
+
+        MvcResult answeringMonitorResult = mockMvc.perform(get("/exams/" + examId + "/monitoring")
+                        .header("Authorization", "Bearer " + teacherToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn();
+        String answeringStartTime = objectMapper.readTree(answeringMonitorResult.getResponse().getContentAsString())
+                .path("data")
+                .path(0)
+                .path("startTime")
+                .asText();
+        Thread.sleep(1100);
+
+        mockMvc.perform(post("/answers/exams/" + examId + "/submit")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        MvcResult submittedMonitorResult = mockMvc.perform(get("/exams/" + examId + "/monitoring")
+                        .header("Authorization", "Bearer " + teacherToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data[0].studentId").value(3))
+                .andExpect(jsonPath("$.data[0].answerStatus").value("WAIT_MARKING"))
+                .andExpect(jsonPath("$.data[0].switchCount").value(3))
+                .andReturn();
+        String submittedStartTime = objectMapper.readTree(submittedMonitorResult.getResponse().getContentAsString())
+                .path("data")
+                .path(0)
+                .path("startTime")
+                .asText();
+        if (!answeringStartTime.equals(submittedStartTime)) {
+            throw new AssertionError("提交后监控开始作答时间不应变化");
         }
     }
 

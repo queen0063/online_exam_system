@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { ClassInfoRecord, LoginPayload, LoginResult, RegisterPayload, UserInfo } from '@/types'
+import type { ClassInfoRecord, LoginPayload, LoginResult, RegisterInviteInfo, RegisterPayload, UserInfo } from '@/types'
 
 export function loginApi(data: LoginPayload) {
   return request.post<LoginResult, { data: LoginResult }>('/auth/login', data)
@@ -11,6 +11,14 @@ export function registerApi(data: RegisterPayload) {
 
 export function getRegisterClassListApi() {
   return request.get<ClassInfoRecord[], { data: ClassInfoRecord[] }>('/auth/register/classes')
+}
+
+export function getRegisterInviteApi(inviteCode: string) {
+  return request.get<RegisterInviteInfo, { data: RegisterInviteInfo }>(`/auth/register/invite/${inviteCode}`)
+}
+
+export function getRegisterInviteLinkApi(classId: number) {
+  return request.get<RegisterInviteInfo, { data: RegisterInviteInfo }>(`/auth/register/invite-link/${classId}`)
 }
 
 export function logoutApi() {

@@ -1,5 +1,5 @@
 <template>
-  <page-container title="待阅卷列表" description="教师查看待批改答卷，并进入主观题评分页面。">
+  <page-container title="阅卷列表" description="教师查看待批改和已批改的主观题答卷。">
     <div class="app-card filter-card">
       <el-select v-model="query.examId" clearable filterable placeholder="按考试筛选" class="exam-filter" @change="handleSearch">
         <el-option v-for="item in examOptions" :key="item.id" :label="item.examName" :value="item.id" />
@@ -22,7 +22,7 @@
         </el-table-column>
         <el-table-column label="操作" width="140">
           <template #default="{ row }">
-            <el-button type="primary" link @click="goDetail(row)">去阅卷</el-button>
+            <el-button type="primary" link @click="goDetail(row)">{{ row.scoreStatus === 'MARKED' ? '查看' : '去阅卷' }}</el-button>
           </template>
         </el-table-column>
       </common-table>

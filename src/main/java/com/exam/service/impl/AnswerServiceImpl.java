@@ -250,6 +250,18 @@ public class AnswerServiceImpl implements AnswerService {
     }
 
     @Override
+    public void reportSwitchCount(Long examId, Integer switchCount) {
+        Exam exam = getAccessibleExam(examId);
+        validateExamAccess(exam);
+        ExamStudent examStudent = examStudentMapper.selectByExamIdAndStudentId(examId, SecurityContextUtils.getUserId());
+        validateExamParticipation(examStudent);
+        if (!AnswerStatusEnum.ANSWERING.name().equals(examStudent.getAnswerStatus())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "只有考试中可以上报切屏次数");
+        }
+        examStudentMapper.updateSwitchCount(examId, SecurityContextUtils.getUserId(), switchCount);
+    }
+
+    @Override
     public List<AnswerVO> answerDetail(Long examId) {
         Exam exam = getAccessibleExam(examId);
         validateAnswerReviewAccess(exam, examStudentMapper.selectByExamIdAndStudentId(examId, SecurityContextUtils.getUserId()));

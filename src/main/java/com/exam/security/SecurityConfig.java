@@ -51,9 +51,11 @@ public class SecurityConfig {
                                 "/auth/login",
                                 "/auth/register",
                                 "/auth/register/classes",
+                                "/auth/register/invite/*",
                                 "/api/auth/login",
                                 "/api/auth/register",
-                                "/api/auth/register/classes").permitAll()
+                                "/api/auth/register/classes",
+                                "/api/auth/register/invite/*").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

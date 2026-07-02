@@ -10,9 +10,16 @@
       </div>
 
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @keyup.enter="handleSubmit">
-        <el-form-item label="注册身份" prop="roleCode">
+        <el-alert
+          v-if="inviteInfo"
+          class="register-page__invite"
+          type="success"
+          :closable="false"
+          :title="`学生注册：${classLabel(inviteInfo)}，负责教师 ${inviteInfo.teacherName}`"
+        />
+
+        <el-form-item v-if="!inviteCode" label="注册身份" prop="roleCode">
           <el-radio-group v-model="form.roleCode">
-            <el-radio-button value="STUDENT">学生</el-radio-button>
             <el-radio-button value="TEACHER">教师</el-radio-button>
           </el-radio-group>
         </el-form-item>
@@ -33,10 +40,8 @@
           <el-form-item v-if="form.roleCode === 'STUDENT'" label="学号" prop="studentNo">
             <el-input v-model="form.studentNo" placeholder="请输入学号" size="large" />
           </el-form-item>
-          <el-form-item v-if="form.roleCode === 'STUDENT'" label="班级" prop="classId">
-            <el-select v-model="form.classId" class="w-full" placeholder="请选择班级" size="large">
-              <el-option v-for="item in classOptions" :key="item.id" :label="classLabel(item)" :value="item.id" />
-            </el-select>
+          <el-form-item v-if="form.roleCode === 'STUDENT'" label="班级">
+            <el-input :model-value="inviteInfo ? classLabel(inviteInfo) : ''" disabled size="large" />
           </el-form-item>
           <el-form-item label="手机号">
             <el-input v-model="form.phone" placeholder="请输入手机号" size="large" />
@@ -45,13 +50,6 @@
             <el-input v-model="form.email" placeholder="请输入邮箱" size="large" />
           </el-form-item>
         </div>
-
-        <el-alert
-          v-if="form.roleCode === 'TEACHER'"
-          type="warning"
-          :closable="false"
-          title="教师账号注册后默认为禁用状态，需要管理员在用户管理中启用后才能登录。"
-        />
 
         <el-button class="w-full register-page__submit" type="primary" size="large" :loading="loading" @click="handleSubmit">
           提交注册
@@ -68,23 +66,25 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
-import { getRegisterClassListApi, registerApi } from '@/api/modules/auth'
-import type { ClassInfoRecord, RegisterPayload } from '@/types'
+import { getRegisterInviteApi, registerApi } from '@/api/modules/auth'
+import type { RegisterInviteInfo, RegisterPayload } from '@/types'
 
 const router = useRouter()
+const route = useRoute()
 const formRef = ref<FormInstance>()
 const loading = ref(false)
-const classOptions = ref<ClassInfoRecord[]>([])
+const inviteCode = ref('')
+const inviteInfo = ref<RegisterInviteInfo>()
 
 const form = reactive({
   username: '',
   password: '',
   confirmPassword: '',
   realName: '',
-  roleCode: 'STUDENT' as RegisterPayload['roleCode'],
+  roleCode: 'TEACHER' as RegisterPayload['roleCode'],
   studentNo: '',
   classId: undefined as number | undefined,
   phone: '',
@@ -112,8 +112,7 @@ const rules: FormRules = {
   ],
   realName: [{ required: true, message: '请输入真实姓名', trigger: 'blur' }],
   roleCode: [{ required: true, message: '请选择注册身份', trigger: 'change' }],
-  studentNo: [{ required: true, message: '请输入学号', trigger: 'blur' }],
-  classId: [{ required: true, message: '请选择班级', trigger: 'change' }]
+  studentNo: [{ required: true, message: '请输入学号', trigger: 'blur' }]
 }
 
 watch(
@@ -126,13 +125,20 @@ watch(
   }
 )
 
-function classLabel(item: ClassInfoRecord) {
+function classLabel(item: RegisterInviteInfo) {
   return item.gradeName ? `${item.gradeName} ${item.className}` : item.className
 }
 
-async function loadClasses() {
-  const result = await getRegisterClassListApi()
-  classOptions.value = result.data
+async function loadInvite() {
+  const code = typeof route.query.invite === 'string' ? route.query.invite : ''
+  if (!code) {
+    return
+  }
+  inviteCode.value = code
+  form.roleCode = 'STUDENT'
+  const result = await getRegisterInviteApi(code)
+  inviteInfo.value = result.data
+  form.classId = result.data.classId
 }
 
 async function handleSubmit() {
@@ -151,13 +157,13 @@ async function handleSubmit() {
   }
   if (form.roleCode === 'STUDENT') {
     payload.studentNo = form.studentNo
-    payload.classId = form.classId
+    payload.inviteCode = inviteCode.value
   }
 
   loading.value = true
   try {
     await registerApi(payload)
-    ElMessage.success(form.roleCode === 'TEACHER' ? '注册成功，请等待管理员启用账号' : '注册成功，请登录')
+    ElMessage.success('注册成功，请登录')
     await router.replace('/login')
   } finally {
     loading.value = false
@@ -168,7 +174,7 @@ function goLogin() {
   router.push('/login')
 }
 
-onMounted(loadClasses)
+onMounted(loadInvite)
 </script>
 
 <style scoped lang="scss">
@@ -222,6 +228,10 @@ onMounted(loadClasses)
 
 .register-page__submit {
   margin-top: 18px;
+}
+
+.register-page__invite {
+  margin-bottom: 18px;
 }
 
 .register-page__footer {

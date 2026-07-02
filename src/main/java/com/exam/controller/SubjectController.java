@@ -37,7 +37,7 @@ public class SubjectController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
     @OperationLog(module = "科目管理", description = "保存科目", operationType = OperationTypeEnum.CREATE)
     public Result<Void> save(@Valid @RequestBody SubjectSaveDTO subjectSaveDTO) {
         subjectService.save(subjectSaveDTO);
@@ -45,7 +45,7 @@ public class SubjectController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
     @OperationLog(module = "科目管理", description = "删除科目", operationType = OperationTypeEnum.DELETE)
     public Result<Void> remove(@PathVariable Long id) {
         subjectService.remove(id);
