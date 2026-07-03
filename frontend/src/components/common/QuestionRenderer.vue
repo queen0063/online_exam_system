@@ -2,8 +2,23 @@
   <div class="question-renderer">
     <div class="question-renderer__header">
       <span class="question-renderer__type">{{ typeLabel }}</span>
-      <h3>{{ index + 1 }}. {{ question.title }}</h3>
+      <h3 class="question-renderer__title">
+        <span class="question-renderer__index">{{ index + 1 }}.</span>
+        <span class="question-renderer__title-text">{{ question.title }}</span>
+      </h3>
       <span class="question-renderer__score">{{ question.questionScore || question.score }} 分</span>
+    </div>
+
+    <div v-if="question.imageUrls?.length" class="question-renderer__images">
+      <el-image
+        v-for="(url, imageIndex) in question.imageUrls"
+        :key="`${imageIndex}-${url.slice(0, 32)}`"
+        :src="url"
+        :preview-src-list="question.imageUrls"
+        :initial-index="imageIndex"
+        fit="contain"
+        preview-teleported
+      />
     </div>
 
     <div v-if="question.questionType === 'SINGLE_CHOICE'" class="question-renderer__body">
@@ -103,9 +118,14 @@ function onInputChange(value: string) {
   flex-direction: column;
   gap: 16px;
   padding: 24px;
-  border-radius: 18px;
+  border-radius: $radius-xl;
   background: #fff;
-  border: 1px solid $app-border-color;
+  border: 1px solid $app-border-subtle;
+  transition: box-shadow $duration-base $ease-fluent;
+}
+
+.question-renderer:hover {
+  box-shadow: $shadow-md;
 }
 
 .question-renderer__header {
@@ -115,16 +135,30 @@ function onInputChange(value: string) {
   flex-wrap: wrap;
 }
 
-.question-renderer__header h3 {
+.question-renderer__title {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   margin: 0;
   flex: 1;
+  min-width: 240px;
   font-size: 18px;
+  line-height: 1.75;
+}
+
+.question-renderer__index {
+  flex: 0 0 auto;
+}
+
+.question-renderer__title-text {
+  white-space: pre-line;
+  word-break: break-word;
 }
 
 .question-renderer__type {
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(37, 99, 235, 0.12);
+  background: $app-primary-light;
   color: $app-primary;
   font-size: 12px;
 }
@@ -134,10 +168,24 @@ function onInputChange(value: string) {
   font-weight: 700;
 }
 
+.question-renderer__images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.question-renderer__images :deep(.el-image) {
+  width: 100%;
+  height: 150px;
+  border: 1px solid $app-border-subtle;
+  border-radius: $radius-md;
+  background: $app-surface-subtle;
+}
+
 .question-renderer__analysis {
   padding: 16px;
-  border-radius: 14px;
-  background: #f8fafc;
+  border-radius: $radius-lg;
+  background: $app-surface-subtle;
 }
 
 .question-renderer__analysis p {

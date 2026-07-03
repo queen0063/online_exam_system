@@ -53,17 +53,29 @@ async function closeTag(fullPath: string) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: #fff;
-  border: 1px solid $app-border-color;
-  color: $app-sub-text-color;
+  padding: 6px 14px;
+  border-radius: $radius-pill;
+  background: $app-surface-overlay;
+  border: 1px solid $app-border-subtle;
+  color: $app-text-secondary;
   white-space: nowrap;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition:
+    background-color $duration-fast $ease-fluent,
+    border-color $duration-fast $ease-fluent,
+    color $duration-fast $ease-fluent;
+}
+
+.tags-view__item:hover {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: $app-border-color;
 }
 
 .tags-view__item.active {
   color: #fff;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  background: linear-gradient(135deg, $app-primary, $app-primary-hover);
   border-color: transparent;
+  box-shadow: 0 2px 8px rgba(15, 108, 189, 0.2);
 }
 </style>

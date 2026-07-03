@@ -47,7 +47,15 @@ public class SecurityConfig {
                         .authenticationEntryPoint(restAuthenticationEntryPoint)
                         .accessDeniedHandler(restAccessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/login", "/api/auth/login").permitAll()
+                        .requestMatchers(
+                                "/auth/login",
+                                "/auth/register",
+                                "/auth/register/classes",
+                                "/auth/register/invite/*",
+                                "/api/auth/login",
+                                "/api/auth/register",
+                                "/api/auth/register/classes",
+                                "/api/auth/register/invite/*").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

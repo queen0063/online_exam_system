@@ -4,7 +4,10 @@
       <el-descriptions :column="3" border>
         <el-descriptions-item label="考试名称">{{ detail?.examName }}</el-descriptions-item>
         <el-descriptions-item label="学生">{{ detail?.studentName }}</el-descriptions-item>
-        <el-descriptions-item label="当前总分">{{ detail?.totalScore ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="当前总分">{{ currentTotalScore }}</el-descriptions-item>
+        <el-descriptions-item label="阅卷状态">
+          <status-tag :value="detail?.scoreStatus || ''" :map="scoreStatusMap" />
+        </el-descriptions-item>
       </el-descriptions>
     </div>
 
@@ -24,7 +27,8 @@
           </div>
           <el-input v-model="commentMap[item.id]" type="textarea" :rows="2" placeholder="请输入教师评语" :disabled="!canMark(item)" />
           <div class="answer-card__actions">
-            <el-tag v-if="!canMark(item)" type="info">客观题已自动判分</el-tag>
+            <el-tag v-if="isMarked" type="success">已阅卷</el-tag>
+            <el-tag v-else-if="!canMark(item)" type="info">客观题已自动判分</el-tag>
             <el-button v-else type="primary" @click="handleMark(item.id)">保存评分</el-button>
           </div>
         </div>
@@ -33,19 +37,21 @@
 
     <div class="app-card footer-bar">
       <el-button @click="$router.back()">返回列表</el-button>
-      <el-button type="primary" @click="handleFinish">完成阅卷</el-button>
+      <el-button v-if="!isMarked" type="primary" @click="handleFinish">完成阅卷</el-button>
     </div>
   </page-container>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
 import { finishMarkingApi, getMarkingDetailApi, markQuestionApi } from '@/api/modules/marking'
 import PageContainer from '@/components/common/PageContainer.vue'
 import QuestionRenderer from '@/components/common/QuestionRenderer.vue'
+import StatusTag from '@/components/common/StatusTag.vue'
+import { SCORE_STATUS_OPTIONS } from '@/utils/dicts'
 import type { AnswerRecord, MarkingRecord } from '@/types'
 
 const route = useRoute()
@@ -53,6 +59,16 @@ const router = useRouter()
 const detail = ref<MarkingRecord>()
 const scoreMap = reactive<Record<number, number>>({})
 const commentMap = reactive<Record<number, string>>({})
+const scoreStatusMap = SCORE_STATUS_OPTIONS.reduce<Record<string, string>>((map, item) => {
+  map[item.value] = item.label
+  return map
+}, {})
+const isMarked = computed(() => detail.value?.scoreStatus === 'MARKED')
+const currentTotalScore = computed(() => {
+  return (detail.value?.answers || []).reduce((total, item) => {
+    return total + (scoreMap[item.id] ?? item.actualScore ?? 0)
+  }, 0)
+})
 
 async function loadData() {
   const result = await getMarkingDetailApi(Number(route.params.examId), Number(route.params.studentId))
@@ -68,11 +84,16 @@ async function handleMark(answerId: number) {
     actualScore: scoreMap[answerId] || 0,
     teacherComment: commentMap[answerId]
   })
+  const answer = detail.value?.answers.find((item) => item.id === answerId)
+  if (answer) {
+    answer.actualScore = scoreMap[answerId] || 0
+    answer.teacherComment = commentMap[answerId]
+  }
   ElMessage.success('单题评分已保存')
 }
 
 function canMark(item: AnswerRecord) {
-  return item.questionType === 'SHORT_ANSWER'
+  return !isMarked.value && item.questionType === 'SHORT_ANSWER'
 }
 
 async function handleFinish() {

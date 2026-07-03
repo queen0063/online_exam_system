@@ -4,7 +4,7 @@ import com.exam.aspect.OperationLog;
 import com.exam.common.enums.OperationTypeEnum;
 import com.exam.common.result.PageResult;
 import com.exam.common.result.Result;
-import com.exam.dto.common.PageQueryDTO;
+import com.exam.dto.marking.MarkingQueryDTO;
 import com.exam.dto.marking.MarkingScoreDTO;
 import com.exam.service.MarkingService;
 import com.exam.vo.marking.MarkingVO;
@@ -33,8 +33,8 @@ public class MarkingController {
     }
 
     @GetMapping("/pending")
-    public Result<PageResult<MarkingVO>> pending(PageQueryDTO pageQueryDTO) {
-        return Result.success(markingService.pendingPage(pageQueryDTO));
+    public Result<PageResult<MarkingVO>> pending(MarkingQueryDTO queryDTO) {
+        return Result.success(markingService.pendingPage(queryDTO));
     }
 
     @GetMapping("/exams/{examId}/students/{studentId}")

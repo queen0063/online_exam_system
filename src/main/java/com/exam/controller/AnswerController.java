@@ -5,6 +5,7 @@ import com.exam.common.enums.OperationTypeEnum;
 import com.exam.common.result.PageResult;
 import com.exam.common.result.Result;
 import com.exam.dto.answer.AnswerSaveDTO;
+import com.exam.dto.answer.SwitchCountReportDTO;
 import com.exam.dto.exam.ExamQueryDTO;
 import com.exam.service.AnswerService;
 import com.exam.vo.answer.AnswerVO;
@@ -63,6 +64,12 @@ public class AnswerController {
     public Result<Void> submit(@PathVariable Long examId) {
         answerService.submit(examId);
         return Result.success("提交成功", null);
+    }
+
+    @PutMapping("/exams/{examId}/switch-count")
+    public Result<Void> reportSwitchCount(@PathVariable Long examId, @Valid @RequestBody SwitchCountReportDTO reportDTO) {
+        answerService.reportSwitchCount(examId, reportDTO.getSwitchCount());
+        return Result.success("上报成功", null);
     }
 
     @GetMapping("/exams/{examId}/detail")

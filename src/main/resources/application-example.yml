@@ -7,7 +7,7 @@ spring:
   application:
     name: online-exam-system-backend
   datasource:
-    url: jdbc:mysql://localhost:3306/online_exam_system?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&connectionTimeZone=Asia/Shanghai&forceConnectionTimeZoneToSession=true&useSSL=false
+    url: jdbc:mysql://localhost:3306/online_exam_system?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&connectionTimeZone=GMT%2B8&forceConnectionTimeZoneToSession=true&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -40,3 +40,14 @@ app:
       - /error
   swagger:
     enabled: false
+
+  upyun:
+    bucket: ${UPYUN_BUCKET:}
+    operator: ${UPYUN_OPERATOR:}
+    password: ${UPYUN_PASSWORD:}
+    domain: ${UPYUN_DOMAIN:}
+    upload-host: ${UPYUN_UPLOAD_HOST:}
+    save-key: /exam/questions/{year}/{mon}/{day}/{random32}{.suffix}
+    expiration-minutes: 30
+    max-file-size: 2097152
+    allow-file-type: jpg,jpeg,png,gif,webp

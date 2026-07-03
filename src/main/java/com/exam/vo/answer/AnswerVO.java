@@ -16,6 +16,7 @@ public class AnswerVO {
     private Long questionId;
     private String questionType;
     private String title;
+    private List<String> imageUrls;
     private List<String> options;
     private List<String> standardAnswers;
     private List<String> studentAnswers;

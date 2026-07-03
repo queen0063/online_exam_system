@@ -7,16 +7,20 @@ import com.exam.common.exception.BusinessException;
 import com.exam.common.result.PageResult;
 import com.exam.dto.exam.ExamQueryDTO;
 import com.exam.dto.exam.ExamSaveDTO;
+import com.exam.dto.user.UserQueryDTO;
 import com.exam.entity.Exam;
 import com.exam.entity.ExamStudent;
 import com.exam.entity.Paper;
+import com.exam.entity.SysUser;
 import com.exam.mapper.ExamMapper;
 import com.exam.mapper.ExamScoreMapper;
 import com.exam.mapper.ExamStudentMapper;
 import com.exam.mapper.PaperMapper;
+import com.exam.mapper.SysUserMapper;
 import com.exam.security.context.SecurityContextUtils;
 import com.exam.service.ExamService;
 import com.exam.vo.exam.ExamVO;
+import com.exam.vo.exam.ExamMonitorVO;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,16 +38,19 @@ public class ExamServiceImpl implements ExamService {
     private final ExamStudentMapper examStudentMapper;
     private final PaperMapper paperMapper;
     private final ExamScoreMapper examScoreMapper;
+    private final SysUserMapper sysUserMapper;
 
     public ExamServiceImpl(
             ExamMapper examMapper,
             ExamStudentMapper examStudentMapper,
             PaperMapper paperMapper,
-            ExamScoreMapper examScoreMapper) {
+            ExamScoreMapper examScoreMapper,
+            SysUserMapper sysUserMapper) {
         this.examMapper = examMapper;
         this.examStudentMapper = examStudentMapper;
         this.paperMapper = paperMapper;
         this.examScoreMapper = examScoreMapper;
+        this.sysUserMapper = sysUserMapper;
     }
 
     @Override
@@ -76,6 +83,13 @@ public class ExamServiceImpl implements ExamService {
         return toVO(exam, studentIds);
     }
 
+    @Override
+    public List<ExamMonitorVO> monitoring(Long id) {
+        Exam exam = getExam(id);
+        enforceOwnExam(exam);
+        return examStudentMapper.selectMonitoringByExamId(id);
+    }
+
     @Transactional(rollbackFor = Exception.class)
     @Override
     public void save(ExamSaveDTO examSaveDTO) {
@@ -89,6 +103,7 @@ public class ExamServiceImpl implements ExamService {
         if (!SecurityContextUtils.hasAnyRole("ADMIN") && !paper.getCreatorId().equals(SecurityContextUtils.getUserId())) {
             throw new BusinessException(ResultCode.FORBIDDEN, "教师只能使用自己创建的试卷创建考试");
         }
+        validateExamStudents(examSaveDTO.getStudentIds());
         Exam exam = examSaveDTO.getId() == null ? new Exam() : getExam(examSaveDTO.getId());
         if (examSaveDTO.getId() != null) {
             enforceOwnExam(exam);
@@ -101,6 +116,7 @@ public class ExamServiceImpl implements ExamService {
         exam.setEndTime(examSaveDTO.getEndTime());
         exam.setDurationMinutes(examSaveDTO.getDurationMinutes());
         exam.setPassScore(examSaveDTO.getPassScore());
+        exam.setMaxSwitchCount(examSaveDTO.getMaxSwitchCount());
         exam.setStatus(ExamStatusEnum.DRAFT.name());
         exam.setResultPublished(0);
         exam.setUpdateTime(LocalDateTime.now());
@@ -156,6 +172,7 @@ public class ExamServiceImpl implements ExamService {
             examStudent.setExamId(examId);
             examStudent.setStudentId(studentId);
             examStudent.setAnswerStatus(AnswerStatusEnum.NOT_STARTED.name());
+            examStudent.setSwitchCount(0);
             examStudent.setCreateTime(LocalDateTime.now());
             examStudent.setUpdateTime(LocalDateTime.now());
             examStudent.setDeleted(0);
@@ -163,6 +180,21 @@ public class ExamServiceImpl implements ExamService {
         }
         if (!list.isEmpty()) {
             examStudentMapper.batchInsert(list);
+        }
+    }
+
+    private void validateExamStudents(List<Long> studentIds) {
+        if (studentIds == null || studentIds.isEmpty()) {
+            return;
+        }
+        UserQueryDTO queryDTO = new UserQueryDTO();
+        boolean admin = SecurityContextUtils.hasAnyRole("ADMIN");
+        List<Long> visibleStudentIds = sysUserMapper.selectStudents(queryDTO, SecurityContextUtils.getUserId(), admin)
+                .stream()
+                .map(SysUser::getId)
+                .toList();
+        if (!visibleStudentIds.containsAll(studentIds)) {
+            throw new BusinessException(ResultCode.FORBIDDEN, admin ? "只能选择学生角色用户参加考试" : "教师只能选择自己负责班级的学生");
         }
     }
 
@@ -250,6 +282,7 @@ public class ExamServiceImpl implements ExamService {
                 .endTime(exam.getEndTime())
                 .durationMinutes(exam.getDurationMinutes())
                 .passScore(exam.getPassScore())
+                .maxSwitchCount(exam.getMaxSwitchCount())
                 .status(exam.getStatus())
                 .resultPublished(exam.getResultPublished())
                 .studentIds(studentIds)

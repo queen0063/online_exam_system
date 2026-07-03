@@ -13,6 +13,8 @@ public interface SysUserMapper {
 
     SysUser selectByUsername(@Param("username") String username);
 
+    SysUser selectByStudentNo(@Param("studentNo") String studentNo);
+
     List<SysUser> selectPage(UserQueryDTO queryDTO);
 
     Long selectCount(UserQueryDTO queryDTO);
@@ -24,4 +26,6 @@ public interface SysUserMapper {
     int logicDeleteById(@Param("id") Long id);
 
     List<SysUser> selectByIds(@Param("ids") List<Long> ids);
+
+    List<SysUser> selectStudents(@Param("query") UserQueryDTO queryDTO, @Param("teacherId") Long teacherId, @Param("admin") boolean admin);
 }

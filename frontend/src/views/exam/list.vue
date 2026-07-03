@@ -35,10 +35,11 @@
             <status-tag :value="row.status" :map="statusMap" />
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="340" fixed="right">
+        <el-table-column label="操作" width="380" fixed="right">
           <template #default="{ row }">
             <div class="actions">
               <el-button link type="primary" @click="showDetail(row)">详情</el-button>
+              <el-button link type="primary" @click="openMonitor(row)">监测</el-button>
               <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
               <el-button link type="success" @click="handlePublish(row)">发布</el-button>
               <el-button link type="warning" @click="handlePublishScore(row)">发布成绩</el-button>
@@ -68,7 +69,7 @@
           </el-form-item>
           <el-form-item label="科目" prop="subjectId">
             <el-select v-model="form.subjectId" class="w-full">
-              <el-option v-for="item in SUBJECT_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+              <el-option v-for="item in subjectOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
           <el-form-item label="考试时长" prop="durationMinutes">
@@ -86,6 +87,23 @@
             <el-date-picker v-model="form.endTime" type="datetime" class="w-full" value-format="YYYY-MM-DD HH:mm:ss" />
           </el-form-item>
         </div>
+        <el-form-item label="防切屏">
+          <div class="anti-switch-setting">
+            <el-switch v-model="form.antiSwitchEnabled" active-text="启用" inactive-text="不启用" />
+            <el-input-number
+              v-if="form.antiSwitchEnabled"
+              v-model="form.maxSwitchCount"
+              :min="0"
+              :max="99"
+              controls-position="right"
+            />
+          </div>
+        </el-form-item>
+        <el-form-item label="学生班级">
+          <el-select v-model="studentQuery.classId" clearable class="w-full" placeholder="全部可选班级" @change="handleStudentClassChange">
+            <el-option v-for="item in classOptions" :key="item.id" :label="classLabel(item)" :value="item.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="参与学生" prop="studentIds">
           <el-select v-model="form.studentIds" multiple class="w-full" placeholder="请选择学生">
             <el-option v-for="item in studentOptions" :key="item.value" :label="item.label" :value="item.value" />
@@ -105,6 +123,9 @@
         <el-descriptions-item label="结束时间">{{ formatDateTime(currentRow?.endTime) }}</el-descriptions-item>
         <el-descriptions-item label="考试时长">{{ currentRow?.durationMinutes }} 分钟</el-descriptions-item>
         <el-descriptions-item label="及格线">{{ currentRow?.passScore }} 分</el-descriptions-item>
+        <el-descriptions-item label="防切屏">
+          {{ currentRow?.maxSwitchCount === undefined || currentRow?.maxSwitchCount === null ? '不启用' : `超过 ${currentRow.maxSwitchCount} 次自动交卷` }}
+        </el-descriptions-item>
         <el-descriptions-item label="状态">{{ statusMap[currentRow?.status || ''] || '-' }}</el-descriptions-item>
       </el-descriptions>
     </el-drawer>
@@ -113,19 +134,23 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 
+import { getClassListApi } from '@/api/modules/classInfo'
 import { deleteExamApi, getExamDetailApi, getExamPageApi, publishExamApi, publishExamScoreApi, saveExamApi } from '@/api/modules/exam'
 import { getPaperPageApi } from '@/api/modules/paper'
+import { getStudentListApi } from '@/api/modules/user'
 import PageContainer from '@/components/common/PageContainer.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import QueryBar from '@/components/form/QueryBar.vue'
 import CommonPagination from '@/components/table/CommonPagination.vue'
 import CommonTable from '@/components/table/CommonTable.vue'
 import { usePagination } from '@/hooks/usePagination'
-import { EXAM_STATUS_OPTIONS, SUBJECT_OPTIONS } from '@/utils/dicts'
+import { useSubjects } from '@/hooks/useSubjects'
+import { EXAM_STATUS_OPTIONS } from '@/utils/dicts'
 import { formatDateTime } from '@/utils/format'
-import type { ExamRecord, PaperRecord } from '@/types'
+import type { ClassInfoRecord, ExamRecord, PaperRecord, UserRecord } from '@/types'
 
 const statusMap = EXAM_STATUS_OPTIONS.reduce<Record<string, string>>((map, item) => {
   map[item.value] = item.label
@@ -133,6 +158,7 @@ const statusMap = EXAM_STATUS_OPTIONS.reduce<Record<string, string>>((map, item)
 }, {})
 
 const loading = ref(false)
+const router = useRouter()
 const dialogLoading = ref(false)
 const submitLoading = ref(false)
 const dialogVisible = ref(false)
@@ -140,18 +166,19 @@ const detailVisible = ref(false)
 const formRef = ref<FormInstance>()
 const tableData = ref<ExamRecord[]>([])
 const paperOptions = ref<PaperRecord[]>([])
+const classOptions = ref<ClassInfoRecord[]>([])
+const studentOptions = ref<Array<{ label: string; value: number }>>([])
 const currentRow = ref<ExamRecord>()
 const { pagination, updatePagination } = usePagination()
-
-const studentOptions = [
-  { label: '学生一（ID:3）', value: 3 },
-  { label: '学生二（ID:4）', value: 4 },
-  { label: '学生三（ID:5）', value: 5 }
-]
+const { subjectOptions, loadSubjects } = useSubjects()
 
 const queryForm = reactive({
   examName: '',
   status: ''
+})
+
+const studentQuery = reactive({
+  classId: '' as number | ''
 })
 
 const initialForm = () => ({
@@ -163,8 +190,10 @@ const initialForm = () => ({
   endTime: '',
   durationMinutes: 60,
   passScore: 60,
+  antiSwitchEnabled: false,
+  maxSwitchCount: 3 as number | undefined,
   status: 'DRAFT',
-  studentIds: [3] as number[]
+  studentIds: [] as number[]
 })
 
 const form = reactive(initialForm())
@@ -181,6 +210,36 @@ const rules: FormRules = {
 async function loadPaperOptions() {
   const result = await getPaperPageApi({ pageNum: 1, pageSize: 50 })
   paperOptions.value = result.data.records
+}
+
+async function loadClassOptions() {
+  const result = await getClassListApi()
+  classOptions.value = result.data
+}
+
+function classLabel(item: ClassInfoRecord) {
+  return item.gradeName ? `${item.gradeName} ${item.className}` : item.className
+}
+
+function studentLabel(item: UserRecord) {
+  const studentNo = item.studentNo ? `${item.studentNo} / ` : ''
+  return `${studentNo}${item.realName}`
+}
+
+async function loadStudentOptions(preserveSelected = true) {
+  const result = await getStudentListApi({ classId: studentQuery.classId })
+  studentOptions.value = result.data.map((item) => ({
+    label: studentLabel(item),
+    value: item.id
+  }))
+  if (preserveSelected) {
+    form.studentIds = form.studentIds.filter((studentId) => studentOptions.value.some((item) => item.value === studentId))
+  }
+}
+
+async function handleStudentClassChange() {
+  await loadStudentOptions(false)
+  form.studentIds = studentOptions.value.map((item) => item.value)
 }
 
 async function loadData() {
@@ -207,9 +266,12 @@ function resetQuery() {
 
 function resetFormState() {
   Object.assign(form, initialForm())
+  studentQuery.classId = ''
 }
 
 async function openDialog(row?: ExamRecord) {
+  studentQuery.classId = ''
+  await loadStudentOptions()
   if (!row?.id) {
     resetFormState()
     dialogVisible.value = true
@@ -223,6 +285,8 @@ async function openDialog(row?: ExamRecord) {
     Object.assign(form, initialForm(), result.data, {
       startTime: formatDateTime(result.data.startTime),
       endTime: formatDateTime(result.data.endTime),
+      antiSwitchEnabled: result.data.maxSwitchCount !== undefined && result.data.maxSwitchCount !== null,
+      maxSwitchCount: result.data.maxSwitchCount ?? 3,
       studentIds: result.data.studentIds || []
     })
   } finally {
@@ -235,6 +299,10 @@ function showDetail(row: ExamRecord) {
   detailVisible.value = true
 }
 
+function openMonitor(row: ExamRecord) {
+  router.push(`/exam/monitor/${row.id}`)
+}
+
 async function handleSubmit() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) {
@@ -243,8 +311,17 @@ async function handleSubmit() {
   submitLoading.value = true
   try {
     await saveExamApi({
-      ...form,
-      paperId: Number(form.paperId)
+      id: form.id,
+      examName: form.examName,
+      paperId: Number(form.paperId),
+      subjectId: Number(form.subjectId),
+      startTime: form.startTime,
+      endTime: form.endTime,
+      durationMinutes: Number(form.durationMinutes),
+      passScore: Number(form.passScore),
+      maxSwitchCount: form.antiSwitchEnabled ? Number(form.maxSwitchCount ?? 0) : undefined,
+      status: form.status,
+      studentIds: form.studentIds
     })
     ElMessage.success('考试保存成功')
     dialogVisible.value = false
@@ -280,12 +357,19 @@ function handlePageChange(pageNum: number, pageSize: number) {
 }
 
 onMounted(async () => {
-  await Promise.all([loadPaperOptions(), loadData()])
+  await Promise.all([loadSubjects(), loadClassOptions(), loadPaperOptions(), loadData()])
+  await loadStudentOptions()
 })
 </script>
 
 <style scoped lang="scss">
 .table-wrapper {
   padding: 16px;
+}
+
+.anti-switch-setting {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 </style>

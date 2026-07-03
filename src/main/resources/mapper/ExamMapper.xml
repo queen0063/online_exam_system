@@ -5,7 +5,7 @@
 <mapper namespace="com.exam.mapper.ExamMapper">
 
     <sql id="Base_Column_List">
-        id, exam_name, paper_id, subject_id, creator_id, start_time, end_time, duration_minutes, pass_score, status, result_published, create_time, update_time, deleted
+        id, exam_name, paper_id, subject_id, creator_id, start_time, end_time, duration_minutes, pass_score, max_switch_count, status, result_published, create_time, update_time, deleted
     </sql>
 
     <select id="selectById" resultType="com.exam.entity.Exam">
@@ -57,6 +57,7 @@
                e.end_time,
                e.duration_minutes,
                e.pass_score,
+               e.max_switch_count,
                e.status,
                e.result_published,
                e.create_time,
@@ -97,8 +98,8 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        insert into exam(exam_name, paper_id, subject_id, creator_id, start_time, end_time, duration_minutes, pass_score, status, result_published, create_time, update_time, deleted)
-        values (#{examName}, #{paperId}, #{subjectId}, #{creatorId}, #{startTime}, #{endTime}, #{durationMinutes}, #{passScore}, #{status}, #{resultPublished}, #{createTime}, #{updateTime}, #{deleted})
+        insert into exam(exam_name, paper_id, subject_id, creator_id, start_time, end_time, duration_minutes, pass_score, max_switch_count, status, result_published, create_time, update_time, deleted)
+        values (#{examName}, #{paperId}, #{subjectId}, #{creatorId}, #{startTime}, #{endTime}, #{durationMinutes}, #{passScore}, #{maxSwitchCount}, #{status}, #{resultPublished}, #{createTime}, #{updateTime}, #{deleted})
     </insert>
 
     <update id="updateById">
@@ -111,6 +112,7 @@
             end_time = #{endTime},
             duration_minutes = #{durationMinutes},
             pass_score = #{passScore},
+            max_switch_count = #{maxSwitchCount},
             status = #{status},
             result_published = #{resultPublished},
             update_time = #{updateTime}

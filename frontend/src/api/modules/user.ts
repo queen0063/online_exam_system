@@ -6,6 +6,7 @@ export interface UserQuery {
   pageSize?: number
   keyword?: string
   roleId?: number
+  classId?: number | ''
   status?: number | ''
 }
 
@@ -13,6 +14,7 @@ export interface UserSavePayload {
   id?: number
   username: string
   password?: string
+  studentNo?: string
   realName: string
   phone?: string
   email?: string
@@ -23,6 +25,10 @@ export interface UserSavePayload {
 
 export function getUserPageApi(params: UserQuery) {
   return request.get<PageResult<UserRecord>, { data: PageResult<UserRecord> }>('/users', { params })
+}
+
+export function getStudentListApi(params: UserQuery = {}) {
+  return request.get<UserRecord[], { data: UserRecord[] }>('/users/students', { params })
 }
 
 export function getUserDetailApi(id: number) {

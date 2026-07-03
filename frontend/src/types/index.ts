@@ -19,6 +19,28 @@ export interface LoginPayload {
   password: string
 }
 
+export interface RegisterPayload {
+  username: string
+  password: string
+  realName: string
+  roleCode: 'TEACHER' | 'STUDENT'
+  studentNo?: string
+  classId?: number
+  inviteCode?: string
+  phone?: string
+  email?: string
+}
+
+export interface RegisterInviteInfo {
+  inviteCode: string
+  classId: number
+  className: string
+  gradeName?: string
+  teacherId: number
+  teacherName: string
+  registerUrl: string
+}
+
 export interface RoleItem {
   id: number
   roleCode: string
@@ -30,7 +52,14 @@ export interface UserInfo {
   userId: number
   username: string
   realName: string
+  phone?: string
+  email?: string
   roleCodes: string[]
+  studentNo?: string
+  classId?: number
+  className?: string
+  gradeName?: string
+  teacherClasses?: ClassInfoRecord[]
 }
 
 export interface LoginResult {
@@ -41,6 +70,7 @@ export interface LoginResult {
 export interface UserRecord {
   id: number
   username: string
+  studentNo?: string
   realName: string
   phone?: string
   email?: string
@@ -50,11 +80,31 @@ export interface UserRecord {
   createTime?: string
 }
 
+export interface ClassInfoRecord {
+  id?: number
+  classCode: string
+  className: string
+  gradeName?: string
+  teacherId?: number
+  status: number
+  createTime?: string
+}
+
+export interface SubjectRecord {
+  id?: number
+  subjectCode: string
+  subjectName: string
+  description?: string
+  status: number
+  createTime?: string
+}
+
 export interface QuestionRecord {
   id?: number
   subjectId: number
   questionType: string
   title: string
+  imageUrls?: string[]
   options?: string[]
   answers: string[]
   studentAnswers?: string[]
@@ -76,6 +126,7 @@ export interface PaperQuestionRecord {
   sortNo: number
   title?: string
   questionType?: string
+  imageUrls?: string[]
   options?: string[]
   answers?: string[]
   analysis?: string
@@ -115,10 +166,23 @@ export interface ExamRecord {
   countdownEndTime?: string
   durationMinutes: number
   passScore: number
+  maxSwitchCount?: number
   status: string
   resultPublished?: number
   answerStatus?: string
   studentIds?: number[]
+}
+
+export interface ExamMonitorRecord {
+  examId: number
+  studentId: number
+  studentNo?: string
+  studentName: string
+  className?: string
+  gradeName?: string
+  answerStatus: string
+  switchCount: number
+  startTime?: string
 }
 
 export interface AnswerRecord {
@@ -126,6 +190,7 @@ export interface AnswerRecord {
   questionId: number
   questionType: string
   title: string
+  imageUrls?: string[]
   options?: string[]
   standardAnswers?: string[]
   studentAnswers?: string[]

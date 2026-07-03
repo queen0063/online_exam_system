@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -140,6 +141,9 @@ public class PaperServiceImpl implements PaperService {
             if (!questionIds.add(item.getQuestionId())) {
                 throw new BusinessException(ResultCode.BAD_REQUEST, "试卷中不能出现重复题目");
             }
+            if (questionMapper.selectById(item.getQuestionId()) == null) {
+                throw new BusinessException(ResultCode.BAD_REQUEST, "题目不存在或已删除，题目ID：" + item.getQuestionId());
+            }
         }
     }
 
@@ -180,17 +184,22 @@ public class PaperServiceImpl implements PaperService {
                 .sorted(Comparator.comparing(PaperQuestion::getSortNo))
                 .map(item -> {
                     Question question = questionMapper.selectById(item.getQuestionId());
+                    if (question == null) {
+                        return null;
+                    }
                     return PaperQuestionVO.builder()
                             .questionId(item.getQuestionId())
                             .questionScore(item.getQuestionScore())
                             .sortNo(item.getSortNo())
                             .questionType(question.getQuestionType())
                             .title(question.getTitle())
+                            .imageUrls(JsonUtils.toStringList(question.getImageJson()))
                             .options(JsonUtils.toStringList(question.getOptionsJson()))
                             .answers(JsonUtils.toStringList(question.getAnswerJson()))
                             .analysis(question.getAnalysis())
                             .build();
                 })
+                .filter(Objects::nonNull)
                 .toList();
         return PaperVO.builder()
                 .id(paper.getId())

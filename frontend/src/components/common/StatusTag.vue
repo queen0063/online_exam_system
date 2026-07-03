@@ -13,13 +13,13 @@ const props = defineProps<{
 const label = computed(() => props.map?.[String(props.value)] || String(props.value ?? '-'))
 const tagType = computed(() => {
   const value = String(props.value)
-  if (['1', 'PUBLISHED', 'IN_PROGRESS', 'GRADED', 'RESULT_PUBLISHED'].includes(value)) {
+  if (['1', 'PUBLISHED', 'IN_PROGRESS', 'GRADED', 'RESULT_PUBLISHED', 'MARKED'].includes(value)) {
     return 'success'
   }
   if (['0', 'DRAFT', 'NOT_STARTED'].includes(value)) {
     return 'info'
   }
-  if (['ENDED', 'PENDING_MARK'].includes(value)) {
+  if (['ENDED', 'PENDING_MARK', 'WAIT_MARKING', 'SUBMITTED'].includes(value)) {
     return 'warning'
   }
   if (['DISABLED'].includes(value)) {

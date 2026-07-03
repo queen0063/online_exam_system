@@ -18,6 +18,7 @@ public final class UserConvert {
         return UserVO.builder()
                 .id(user.getId())
                 .username(user.getUsername())
+                .studentNo(user.getStudentNo())
                 .realName(user.getRealName())
                 .phone(user.getPhone())
                 .email(user.getEmail())

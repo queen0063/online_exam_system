@@ -5,7 +5,7 @@
 <mapper namespace="com.exam.mapper.QuestionMapper">
 
     <sql id="Base_Column_List">
-        id, subject_id, question_type, title, options_json, answer_json, analysis, score, difficulty, knowledge_point, creator_id, create_time, update_time, deleted
+        id, subject_id, question_type, title, image_json, options_json, answer_json, analysis, score, difficulty, knowledge_point, creator_id, create_time, update_time, deleted
     </sql>
 
     <select id="selectById" resultType="com.exam.entity.Question">
@@ -60,8 +60,8 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        insert into question(subject_id, question_type, title, options_json, answer_json, analysis, score, difficulty, knowledge_point, creator_id, create_time, update_time, deleted)
-        values (#{subjectId}, #{questionType}, #{title}, #{optionsJson}, #{answerJson}, #{analysis}, #{score}, #{difficulty}, #{knowledgePoint}, #{creatorId}, #{createTime}, #{updateTime}, #{deleted})
+        insert into question(subject_id, question_type, title, image_json, options_json, answer_json, analysis, score, difficulty, knowledge_point, creator_id, create_time, update_time, deleted)
+        values (#{subjectId}, #{questionType}, #{title}, #{imageJson}, #{optionsJson}, #{answerJson}, #{analysis}, #{score}, #{difficulty}, #{knowledgePoint}, #{creatorId}, #{createTime}, #{updateTime}, #{deleted})
     </insert>
 
     <update id="updateById">
@@ -69,6 +69,7 @@
         set subject_id      = #{subjectId},
             question_type   = #{questionType},
             title           = #{title},
+            image_json      = #{imageJson},
             options_json    = #{optionsJson},
             answer_json     = #{answerJson},
             analysis        = #{analysis},
@@ -118,6 +119,7 @@
             q.subject_id,
             q.question_type,
             q.title,
+            q.image_json,
             q.options_json,
             q.answer_json,
             q.analysis,

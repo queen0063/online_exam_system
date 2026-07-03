@@ -37,13 +37,13 @@ defineProps<{
 
 .page-container__title {
   margin: 0;
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 600;
 }
 
 .page-container__description {
   margin: 8px 0 0;
-  color: $app-sub-text-color;
+  color: $app-text-secondary;
   font-size: 14px;
 }
 

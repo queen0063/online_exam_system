@@ -23,6 +23,10 @@ export function submitAnswerApi(examId: number) {
   return request.post(`/answers/exams/${examId}/submit`)
 }
 
+export function reportSwitchCountApi(examId: number, switchCount: number) {
+  return request.put(`/answers/exams/${examId}/switch-count`, { switchCount })
+}
+
 export function getAnswerDetailApi(examId: number) {
   return request.get<AnswerRecord[], { data: AnswerRecord[] }>(`/answers/exams/${examId}/detail`)
 }

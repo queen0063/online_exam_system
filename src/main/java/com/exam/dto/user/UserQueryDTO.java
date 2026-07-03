@@ -13,5 +13,6 @@ public class UserQueryDTO extends PageQueryDTO {
 
     private String keyword;
     private Long roleId;
+    private Long classId;
     private Integer status;
 }

@@ -18,6 +18,7 @@ public final class QuestionConvert {
                 .subjectId(question.getSubjectId())
                 .questionType(question.getQuestionType())
                 .title(question.getTitle())
+                .imageUrls(JsonUtils.toStringList(question.getImageJson()))
                 .options(JsonUtils.toStringList(question.getOptionsJson()))
                 .answers(JsonUtils.toStringList(question.getAnswerJson()))
                 .analysis(question.getAnalysis())

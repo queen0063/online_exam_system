@@ -1,5 +1,5 @@
 <template>
-  <page-container :title="examDetail?.examName || '在线答题'" description="考试过程中禁止切屏、切换标签页或离开当前窗口，违规将自动交卷。">
+  <page-container :title="examDetail?.examName || '在线答题'" :description="pageDescription">
     <div class="answer-layout">
       <div class="answer-layout__main">
         <div class="app-card exam-banner">
@@ -17,9 +17,10 @@
         </div>
 
         <el-alert
+          v-if="antiSwitchEnabled"
           type="error"
           :closable="false"
-          title="已开启考试防切屏监测。考试过程中切换标签页、切换窗口或离开当前页面，将被判定为违规并自动交卷。"
+          :title="`已开启考试防切屏监测。当前已切屏 ${switchCount} 次，超过 ${maxSwitchCount} 次将自动交卷。`"
         />
 
         <question-renderer
@@ -56,17 +57,21 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
-import { getAnswerExamDetailApi, saveAnswerApi, submitAnswerApi } from '@/api/modules/answer'
+import { getAnswerExamDetailApi, reportSwitchCountApi, saveAnswerApi, submitAnswerApi } from '@/api/modules/answer'
 import AnswerSheet from '@/components/common/AnswerSheet.vue'
 import PageContainer from '@/components/common/PageContainer.vue'
 import QuestionRenderer from '@/components/common/QuestionRenderer.vue'
 import { useAnswerStore } from '@/stores/answer'
+import { useUserStore } from '@/stores/user'
 import { formatDateTime, secondsToClock } from '@/utils/format'
 import type { AnswerRecord, ExamRecord } from '@/types'
+
+const SWITCH_COUNT_CACHE_KEY = 'online_exam_switch_count_cache'
 
 const route = useRoute()
 const router = useRouter()
 const answerStore = useAnswerStore()
+const userStore = useUserStore()
 
 const examId = Number(route.params.examId)
 const examDetail = ref<ExamRecord>()
@@ -76,9 +81,18 @@ const remainSeconds = ref(0)
 const isSubmitting = ref(false)
 const examFinished = ref(false)
 const forcedSubmitTriggered = ref(false)
+const switchCount = ref(0)
 let timer: number | undefined
+let lastSwitchRecordTime = 0
 
 const currentQuestion = computed(() => questions.value[currentIndex.value])
+const maxSwitchCount = computed(() => examDetail.value?.maxSwitchCount)
+const antiSwitchEnabled = computed(() => maxSwitchCount.value !== undefined && maxSwitchCount.value !== null)
+const pageDescription = computed(() =>
+  antiSwitchEnabled.value
+    ? '考试已开启防切屏监测，请保持在当前页面完成作答。'
+    : '当前考试未开启防切屏，可作为普通练习完成作答。'
+)
 const currentAnswer = computed({
   get: () => answerStore.currentAnswers[currentQuestion.value?.questionId || 0] || currentQuestion.value?.studentAnswers || [],
   set: (value: string[]) => {
@@ -100,6 +114,43 @@ function detachExamGuard() {
   window.removeEventListener('beforeunload', handleBeforeUnload)
   window.removeEventListener('blur', handleWindowBlur)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
+}
+
+function buildSwitchCountCacheKey() {
+  const userId = userStore.userInfo?.userId
+  if (!userId || !examId) {
+    return ''
+  }
+  return `${SWITCH_COUNT_CACHE_KEY}:${userId}:${examId}`
+}
+
+function loadSwitchCount() {
+  const cacheKey = buildSwitchCountCacheKey()
+  if (!cacheKey) {
+    return
+  }
+  switchCount.value = Number(window.localStorage.getItem(cacheKey) || 0)
+}
+
+function persistSwitchCount() {
+  const cacheKey = buildSwitchCountCacheKey()
+  if (cacheKey) {
+    window.localStorage.setItem(cacheKey, String(switchCount.value))
+  }
+}
+
+async function reportSwitchCount() {
+  if (!antiSwitchEnabled.value || !examId) {
+    return
+  }
+  await reportSwitchCountApi(examId, switchCount.value).catch(() => undefined)
+}
+
+function clearSwitchCount() {
+  const cacheKey = buildSwitchCountCacheKey()
+  if (cacheKey) {
+    window.localStorage.removeItem(cacheKey)
+  }
 }
 
 function buildAnswerPayload() {
@@ -128,7 +179,8 @@ async function finishExam(successMessage: string, failureMessage: string) {
     examFinished.value = true
     clearTimer()
     detachExamGuard()
-    answerStore.clearExamAnswers(examId)
+    answerStore.clearExamAnswers(examId, userStore.userInfo?.userId || 0)
+    clearSwitchCount()
     ElMessage.success(successMessage)
     await router.replace('/student/my-exams')
   } catch (error) {
@@ -150,6 +202,26 @@ async function triggerForcedSubmit(reason: string) {
   }
 }
 
+async function recordSwitchViolation(reason: string) {
+  if (!antiSwitchEnabled.value || examFinished.value || isSubmitting.value) {
+    return
+  }
+  const now = Date.now()
+  if (now - lastSwitchRecordTime < 800) {
+    return
+  }
+  lastSwitchRecordTime = now
+  switchCount.value += 1
+  persistSwitchCount()
+  if (switchCount.value > Number(maxSwitchCount.value)) {
+    await reportSwitchCount()
+    await triggerForcedSubmit(reason)
+    return
+  }
+  void reportSwitchCount()
+  ElMessage.warning(`检测到切屏 ${switchCount.value} 次，超过 ${maxSwitchCount.value} 次将自动交卷`)
+}
+
 function syncCountdown() {
   const countdownEndTime = examDetail.value?.countdownEndTime || examDetail.value?.endTime
   if (!countdownEndTime) {
@@ -164,10 +236,18 @@ function syncCountdown() {
 }
 
 async function loadData() {
-  answerStore.setCurrentExam(examId)
+  const userId = userStore.userInfo?.userId
+  if (!userId) {
+    ElMessage.error('当前登录状态无效，请重新登录')
+    await router.replace('/login')
+    return
+  }
+  answerStore.setCurrentExam(examId, userId)
   const examResult = await getAnswerExamDetailApi(examId)
   examDetail.value = examResult.data
   questions.value = examResult.data.questions || []
+  loadSwitchCount()
+  void reportSwitchCount()
 
   syncCountdown()
   timer = window.setInterval(syncCountdown, 1000)
@@ -195,7 +275,7 @@ async function handleSubmit() {
 }
 
 function handleBeforeUnload(event: BeforeUnloadEvent) {
-  if (examFinished.value || isSubmitting.value) {
+  if (!antiSwitchEnabled.value || examFinished.value || isSubmitting.value) {
     return
   }
   event.preventDefault()
@@ -204,13 +284,13 @@ function handleBeforeUnload(event: BeforeUnloadEvent) {
 
 function handleVisibilityChange() {
   if (document.visibilityState === 'hidden') {
-    void triggerForcedSubmit('检测到切换标签页，系统已自动交卷')
+    void recordSwitchViolation('切屏次数已超过限制，系统已自动交卷')
   }
 }
 
 function handleWindowBlur() {
   if (!document.hidden) {
-    void triggerForcedSubmit('检测到切换窗口，系统已自动交卷')
+    void recordSwitchViolation('切屏次数已超过限制，系统已自动交卷')
   }
 }
 
@@ -229,10 +309,10 @@ onMounted(() => {
 })
 
 onBeforeRouteLeave(() => {
-  if (examFinished.value || isSubmitting.value) {
+  if (!antiSwitchEnabled.value || examFinished.value || isSubmitting.value) {
     return true
   }
-  void triggerForcedSubmit('检测到离开考试页面，系统已自动交卷')
+  void recordSwitchViolation('切屏次数已超过限制，系统已自动交卷')
   return false
 })
 

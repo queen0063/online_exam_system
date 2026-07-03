@@ -10,4 +10,55 @@
         where deleted = 0
         order by id asc
     </select>
+
+    <select id="selectVisible" resultType="com.exam.entity.ClassInfo">
+        select id, class_code, class_name, grade_name, teacher_id, status, create_time, update_time, deleted
+        from class_info
+        where deleted = 0
+          and status = 1
+        <if test="admin == false">
+            and teacher_id = #{teacherId}
+        </if>
+        order by id asc
+    </select>
+
+    <select id="selectById" resultType="com.exam.entity.ClassInfo">
+        select id, class_code, class_name, grade_name, teacher_id, status, create_time, update_time, deleted
+        from class_info
+        where id = #{id}
+          and deleted = 0
+    </select>
+
+    <select id="selectByCode" resultType="com.exam.entity.ClassInfo">
+        select id, class_code, class_name, grade_name, teacher_id, status, create_time, update_time, deleted
+        from class_info
+        where class_code = #{classCode}
+          and deleted = 0
+        limit 1
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        insert into class_info(class_code, class_name, grade_name, teacher_id, status, create_time, update_time, deleted)
+        values (#{classCode}, #{className}, #{gradeName}, #{teacherId}, #{status}, #{createTime}, #{updateTime}, #{deleted})
+    </insert>
+
+    <update id="updateById">
+        update class_info
+        set class_code = #{classCode},
+            class_name = #{className},
+            grade_name = #{gradeName},
+            teacher_id = #{teacherId},
+            status = #{status},
+            update_time = #{updateTime}
+        where id = #{id}
+          and deleted = 0
+    </update>
+
+    <update id="logicDeleteById">
+        update class_info
+        set deleted = 1,
+            update_time = now()
+        where id = #{id}
+          and deleted = 0
+    </update>
 </mapper>

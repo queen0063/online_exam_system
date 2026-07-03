@@ -5,7 +5,7 @@
 <mapper namespace="com.exam.mapper.SysUserMapper">
 
     <sql id="Base_Column_List">
-        id, username, password, real_name, phone, email, class_id, status, create_time, update_time, deleted
+        id, username, password, student_no, real_name, phone, email, class_id, status, create_time, update_time, deleted
     </sql>
 
     <select id="selectById" resultType="com.exam.entity.SysUser">
@@ -21,16 +21,26 @@
         limit 1
     </select>
 
+    <select id="selectByStudentNo" resultType="com.exam.entity.SysUser">
+        select <include refid="Base_Column_List"/>
+        from sys_user
+        where student_no = #{studentNo} and deleted = 0
+        limit 1
+    </select>
+
     <select id="selectPage" resultType="com.exam.entity.SysUser">
         <bind name="offset" value="(pageNum - 1) * pageSize"/>
         select <include refid="Base_Column_List"/>
         from sys_user
         where deleted = 0
         <if test="keyword != null and keyword != ''">
-            and (username like concat('%', #{keyword}, '%') or real_name like concat('%', #{keyword}, '%'))
+            and (username like concat('%', #{keyword}, '%') or real_name like concat('%', #{keyword}, '%') or student_no like concat('%', #{keyword}, '%'))
         </if>
         <if test="status != null">
             and status = #{status}
+        </if>
+        <if test="classId != null">
+            and class_id = #{classId}
         </if>
         <if test="roleId != null">
             and id in (select user_id from sys_user_role where role_id = #{roleId} and deleted = 0)
@@ -44,10 +54,13 @@
         from sys_user
         where deleted = 0
         <if test="keyword != null and keyword != ''">
-            and (username like concat('%', #{keyword}, '%') or real_name like concat('%', #{keyword}, '%'))
+            and (username like concat('%', #{keyword}, '%') or real_name like concat('%', #{keyword}, '%') or student_no like concat('%', #{keyword}, '%'))
         </if>
         <if test="status != null">
             and status = #{status}
+        </if>
+        <if test="classId != null">
+            and class_id = #{classId}
         </if>
         <if test="roleId != null">
             and id in (select user_id from sys_user_role where role_id = #{roleId} and deleted = 0)
@@ -55,14 +68,15 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        insert into sys_user(username, password, real_name, phone, email, class_id, status, create_time, update_time, deleted)
-        values (#{username}, #{password}, #{realName}, #{phone}, #{email}, #{classId}, #{status}, #{createTime}, #{updateTime}, #{deleted})
+        insert into sys_user(username, password, student_no, real_name, phone, email, class_id, status, create_time, update_time, deleted)
+        values (#{username}, #{password}, #{studentNo}, #{realName}, #{phone}, #{email}, #{classId}, #{status}, #{createTime}, #{updateTime}, #{deleted})
     </insert>
 
     <update id="updateById">
         update sys_user
         set username = #{username},
             password = #{password},
+            student_no = #{studentNo},
             real_name = #{realName},
             phone = #{phone},
             email = #{email},
@@ -88,5 +102,37 @@
         <foreach collection="ids" item="id" open="(" separator="," close=")">
             #{id}
         </foreach>
+    </select>
+
+    <select id="selectStudents" resultType="com.exam.entity.SysUser">
+        select <include refid="Base_Column_List"/>
+        from sys_user u
+        where u.deleted = 0
+          and u.status = 1
+          and exists (
+              select 1
+              from sys_user_role ur
+                       inner join sys_role r on r.id = ur.role_id and r.deleted = 0
+              where ur.deleted = 0
+                and ur.user_id = u.id
+                and r.role_code = 'STUDENT'
+          )
+        <if test="query.keyword != null and query.keyword != ''">
+            and (u.username like concat('%', #{query.keyword}, '%') or u.real_name like concat('%', #{query.keyword}, '%') or u.student_no like concat('%', #{query.keyword}, '%'))
+        </if>
+        <if test="query.classId != null">
+            and u.class_id = #{query.classId}
+        </if>
+        <if test="admin == false">
+            and exists (
+                select 1
+                from class_info c
+                where c.deleted = 0
+                  and c.status = 1
+                  and c.id = u.class_id
+                  and c.teacher_id = #{teacherId}
+            )
+        </if>
+        order by u.id asc
     </select>
 </mapper>

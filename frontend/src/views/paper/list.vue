@@ -7,7 +7,7 @@
         </el-form-item>
         <el-form-item label="科目">
           <el-select v-model="queryForm.subjectId" clearable placeholder="全部科目" style="width: 160px">
-            <el-option v-for="item in SUBJECT_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+            <el-option v-for="item in subjectOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -65,7 +65,7 @@
           </el-form-item>
           <el-form-item label="所属科目" prop="subjectId">
             <el-select v-model="form.subjectId" class="w-full">
-              <el-option v-for="item in SUBJECT_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+              <el-option v-for="item in subjectOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
           <el-form-item label="组卷方式" prop="generateType">
@@ -85,6 +85,18 @@
         <template v-if="form.generateType === 'MANUAL'">
           <el-form-item label="选择题目">
             <div class="question-select">
+              <div class="question-select-toolbar">
+                <span class="question-select-label">题目科目</span>
+                <el-select
+                  v-model="manualQuestionQuery.subjectId"
+                  clearable
+                  placeholder="全部科目"
+                  style="width: 180px"
+                  @change="loadQuestionOptions"
+                >
+                  <el-option v-for="item in subjectOptions" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
+              </div>
               <common-table :data="questionOptions">
                 <el-table-column width="60">
                   <template #default="{ row }">
@@ -129,7 +141,7 @@
                 <el-table-column label="科目" min-width="140">
                   <template #default="{ row }">
                     <el-select v-model="row.subjectId" class="w-full">
-                      <el-option v-for="item in SUBJECT_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+                      <el-option v-for="item in subjectOptions" :key="item.value" :label="item.label" :value="item.value" />
                     </el-select>
                   </template>
                 </el-table-column>
@@ -182,7 +194,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 
@@ -193,7 +205,8 @@ import QueryBar from '@/components/form/QueryBar.vue'
 import CommonPagination from '@/components/table/CommonPagination.vue'
 import CommonTable from '@/components/table/CommonTable.vue'
 import { usePagination } from '@/hooks/usePagination'
-import { DIFFICULTY_OPTIONS, QUESTION_TYPE_OPTIONS, SUBJECT_OPTIONS } from '@/utils/dicts'
+import { useSubjects } from '@/hooks/useSubjects'
+import { DIFFICULTY_OPTIONS, QUESTION_TYPE_OPTIONS } from '@/utils/dicts'
 import { formatDateTime } from '@/utils/format'
 import type { PaperRecord, QuestionRecord, RandomRuleRecord } from '@/types'
 
@@ -207,9 +220,14 @@ const questionOptions = ref<QuestionRecord[]>([])
 const selectedQuestionIds = ref<number[]>([])
 const questionScoreMap = reactive<Record<number, number>>({})
 const { pagination, updatePagination } = usePagination()
+const { subjectOptions, loadSubjects } = useSubjects()
 
 const queryForm = reactive({
   paperName: '',
+  subjectId: '' as number | ''
+})
+
+const manualQuestionQuery = reactive({
   subjectId: '' as number | ''
 })
 
@@ -244,12 +262,38 @@ const rules: FormRules = {
   durationMinutes: [{ required: true, message: '请输入时长', trigger: 'change' }]
 }
 
+watch(
+  () => form.subjectId,
+  (subjectId) => {
+    if (!dialogVisible.value || form.generateType !== 'MANUAL') {
+      return
+    }
+    manualQuestionQuery.subjectId = Number(subjectId) || ''
+    loadQuestionOptions()
+  }
+)
+
+watch(
+  () => form.generateType,
+  (generateType) => {
+    if (!dialogVisible.value || generateType !== 'MANUAL') {
+      return
+    }
+    manualQuestionQuery.subjectId = Number(form.subjectId) || ''
+    loadQuestionOptions()
+  }
+)
+
 function questionTypeLabel(value: string) {
   return QUESTION_TYPE_OPTIONS.find((item) => item.value === value)?.label || value
 }
 
 async function loadQuestionOptions() {
-  const result = await getQuestionPageApi({ pageNum: 1, pageSize: 50 })
+  const result = await getQuestionPageApi({
+    pageNum: 1,
+    pageSize: 50,
+    subjectId: manualQuestionQuery.subjectId
+  })
   questionOptions.value = result.data.records
 }
 
@@ -277,6 +321,7 @@ function resetQuery() {
 
 function openDialog(row?: PaperRecord) {
   Object.assign(form, initialForm(), row || {})
+  manualQuestionQuery.subjectId = Number(form.subjectId) || ''
   if (form.generateType === 'RANDOM') {
     form.randomRules = row?.randomRules?.length
       ? row.randomRules.map((item) => ({ ...item }))
@@ -288,6 +333,7 @@ function openDialog(row?: PaperRecord) {
     questionScoreMap[Number(item.questionId)] = item.questionScore
   })
   dialogVisible.value = true
+  loadQuestionOptions()
 }
 
 function addRandomRule() {
@@ -371,7 +417,7 @@ function handlePageChange(pageNum: number, pageSize: number) {
 }
 
 onMounted(async () => {
-  await Promise.all([loadData(), loadQuestionOptions()])
+  await Promise.all([loadSubjects(), loadData(), loadQuestionOptions()])
 })
 </script>
 
@@ -381,7 +427,21 @@ onMounted(async () => {
 }
 
 .question-select {
+  display: grid;
+  gap: 12px;
   width: 100%;
+}
+
+.question-select-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.question-select-label {
+  color: var(--el-text-color-regular);
+  font-size: 14px;
 }
 
 .random-rule-panel {

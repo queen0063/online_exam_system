@@ -39,4 +39,21 @@ function handleSizeChange(pageSize: number) {
   justify-content: flex-end;
   padding-top: 16px;
 }
+
+.pagination-wrapper :deep(.el-pagination) {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  .pagination-wrapper {
+    justify-content: center;
+  }
+
+  .pagination-wrapper :deep(.el-pagination__total),
+  .pagination-wrapper :deep(.el-pagination__sizes),
+  .pagination-wrapper :deep(.el-pagination__jump) {
+    display: none;
+  }
+}
 </style>

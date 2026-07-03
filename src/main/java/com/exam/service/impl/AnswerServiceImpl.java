@@ -188,6 +188,9 @@ public class AnswerServiceImpl implements AnswerService {
         boolean hasSubjective = false;
         for (PaperQuestion paperQuestion : paperQuestions) {
             Question question = questionMapper.selectById(paperQuestion.getQuestionId());
+            if (question == null) {
+                throw new BusinessException(ResultCode.BAD_REQUEST, "试卷包含已删除题目，题目ID：" + paperQuestion.getQuestionId());
+            }
             StudentAnswer studentAnswer = answerMap.get(question.getId());
             if (studentAnswer == null) {
                 studentAnswer = buildEmptyAnswer(exam, paperQuestion, question);
@@ -247,6 +250,18 @@ public class AnswerServiceImpl implements AnswerService {
     }
 
     @Override
+    public void reportSwitchCount(Long examId, Integer switchCount) {
+        Exam exam = getAccessibleExam(examId);
+        validateExamAccess(exam);
+        ExamStudent examStudent = examStudentMapper.selectByExamIdAndStudentId(examId, SecurityContextUtils.getUserId());
+        validateExamParticipation(examStudent);
+        if (!AnswerStatusEnum.ANSWERING.name().equals(examStudent.getAnswerStatus())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "只有考试中可以上报切屏次数");
+        }
+        examStudentMapper.updateSwitchCount(examId, SecurityContextUtils.getUserId(), switchCount);
+    }
+
+    @Override
     public List<AnswerVO> answerDetail(Long examId) {
         Exam exam = getAccessibleExam(examId);
         validateAnswerReviewAccess(exam, examStudentMapper.selectByExamIdAndStudentId(examId, SecurityContextUtils.getUserId()));
@@ -263,12 +278,16 @@ public class AnswerServiceImpl implements AnswerService {
                 .sorted(Comparator.comparing(PaperQuestion::getSortNo))
                 .map(paperQuestion -> {
                     Question question = questionMapper.selectById(paperQuestion.getQuestionId());
+                    if (question == null) {
+                        throw new BusinessException(ResultCode.BAD_REQUEST, "试卷包含已删除题目，题目ID：" + paperQuestion.getQuestionId());
+                    }
                     StudentAnswer answer = answerMap.get(question.getId());
                     return AnswerVO.builder()
                             .id(answer == null ? null : answer.getId())
                             .questionId(question.getId())
                             .questionType(question.getQuestionType())
                             .title(question.getTitle())
+                            .imageUrls(JsonUtils.toStringList(question.getImageJson()))
                             .options(JsonUtils.toStringList(question.getOptionsJson()))
                             .standardAnswers(JsonUtils.toStringList(question.getAnswerJson()))
                             .studentAnswers(answer == null ? List.of() : JsonUtils.toStringList(answer.getAnswerContent()))
@@ -330,6 +349,9 @@ public class AnswerServiceImpl implements AnswerService {
 
     private boolean isObjective(Long questionId) {
         Question question = questionMapper.selectById(questionId);
+        if (question == null) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "题目不存在或已删除，题目ID：" + questionId);
+        }
         return !QuestionTypeEnum.SHORT_ANSWER.name().equals(question.getQuestionType());
     }
 
@@ -348,6 +370,7 @@ public class AnswerServiceImpl implements AnswerService {
                 .endTime(exam.getEndTime())
                 .durationMinutes(exam.getDurationMinutes())
                 .passScore(exam.getPassScore())
+                .maxSwitchCount(exam.getMaxSwitchCount())
                 .status(exam.getStatus())
                 .resultPublished(exam.getResultPublished())
                 .answerStatus(answerStatus)

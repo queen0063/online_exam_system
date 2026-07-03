@@ -2,6 +2,7 @@ package com.exam.service.impl;
 
 import com.exam.common.api.ResultCode;
 import com.exam.common.exception.BusinessException;
+import com.exam.common.util.CodeGenerateUtils;
 import com.exam.dto.role.RoleSaveDTO;
 import com.exam.entity.SysRole;
 import com.exam.mapper.SysRoleMapper;
@@ -40,13 +41,10 @@ public class RoleServiceImpl implements RoleService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void save(RoleSaveDTO roleSaveDTO) {
-        SysRole existsRole = sysRoleMapper.selectByRoleCode(roleSaveDTO.getRoleCode());
-        if (existsRole != null && !existsRole.getId().equals(roleSaveDTO.getId())) {
-            throw new BusinessException(ResultCode.BAD_REQUEST, "角色编码已存在");
-        }
-
         SysRole role = roleSaveDTO.getId() == null ? new SysRole() : getRole(roleSaveDTO.getId());
-        role.setRoleCode(roleSaveDTO.getRoleCode());
+        if (roleSaveDTO.getId() == null) {
+            role.setRoleCode(CodeGenerateUtils.generate("ROLE", code -> sysRoleMapper.selectByRoleCode(code) != null));
+        }
         role.setRoleName(roleSaveDTO.getRoleName());
         role.setStatus(roleSaveDTO.getStatus());
         role.setUpdateTime(LocalDateTime.now());

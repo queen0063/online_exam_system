@@ -1,11 +1,14 @@
 <template>
   <div class="sidebar">
     <div class="sidebar__brand">
-      <div class="sidebar__logo">EX</div>
+      <img class="sidebar__logo" src="/logo.png" alt="Logo" />
       <div v-if="!appStore.sidebarCollapsed" class="sidebar__title">
         <strong>在线考试系统</strong>
         <span>Online Exam Admin</span>
       </div>
+      <button v-if="appStore.isMobile && !appStore.sidebarCollapsed" class="sidebar__close" @click="appStore.toggleSidebar">
+        <el-icon><app-icon name="Close" /></el-icon>
+      </button>
     </div>
 
     <el-scrollbar class="sidebar__menu">
@@ -89,13 +92,10 @@ function resolvePath(parentPath: string, childPath: string) {
 }
 
 .sidebar__logo {
-  display: grid;
   width: 38px;
   height: 38px;
-  place-items: center;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  font-weight: 800;
+  border-radius: $radius-lg;
+  object-fit: contain;
 }
 
 .sidebar__title {
@@ -114,6 +114,33 @@ function resolvePath(parentPath: string, childPath: string) {
   font-size: 12px;
 }
 
+.sidebar__close {
+  display: none;
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: $radius-md;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: background-color $duration-fast $ease-fluent;
+}
+
+.sidebar__close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 960px) {
+  .sidebar__close {
+    display: inline-flex;
+  }
+}
+
 .sidebar__menu {
   flex: 1;
   padding: 8px 12px 16px;
@@ -126,10 +153,17 @@ function resolvePath(parentPath: string, childPath: string) {
 :deep(.el-menu-item),
 :deep(.el-sub-menu__title) {
   margin-bottom: 6px;
-  border-radius: 12px;
+  border-radius: $radius-lg;
+  transition: background-color $duration-fast $ease-fluent;
+}
+
+:deep(.el-menu-item:hover),
+:deep(.el-sub-menu__title:hover) {
+  background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 :deep(.el-menu-item.is-active) {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.85), rgba(29, 78, 216, 0.95));
+  background: linear-gradient(135deg, rgba(15, 108, 189, 0.85), rgba(17, 94, 155, 0.95));
+  box-shadow: 0 2px 8px rgba(15, 108, 189, 0.25);
 }
 </style>

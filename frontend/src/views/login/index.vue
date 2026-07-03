@@ -1,38 +1,24 @@
 <template>
   <div class="login-page">
-    <div class="login-page__panel">
-      <div class="login-page__intro">
-        <span class="login-page__badge">ONLINE EXAM SYSTEM</span>
-        <h1>在线考试系统前端控制台</h1>
-        <p>支持管理员、教师、学生三类角色，覆盖题库、试卷、考试、答题、阅卷与成绩全过程。</p>
-        <div class="login-page__tips">
-          <el-alert title="当前后端初始化账号：admin / Admin@123" type="info" :closable="false" />
-          <el-alert title="当前后端初始化账号：teacher / Admin@123" type="success" :closable="false" />
-          <el-alert title="当前后端初始化账号：student / Admin@123" type="warning" :closable="false" />
-        </div>
+    <div class="login-page__card">
+      <div class="login-page__brand">
+        <img class="login-page__logo" src="/logo.png" alt="Logo" />
+        <h1>在线考试系统</h1>
       </div>
-
-      <div class="app-card login-page__card">
-        <div class="login-page__card-header">
-          <h2>账号登录</h2>
-          <span>请输入用户名和密码</span>
-        </div>
-        <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @keyup.enter="handleLogin">
-          <el-form-item label="用户名" prop="username">
-            <el-input v-model="form.username" placeholder="请输入用户名" size="large" />
-          </el-form-item>
-          <el-form-item label="密码" prop="password">
-            <el-input v-model="form.password" show-password placeholder="请输入密码" size="large" />
-          </el-form-item>
-          <div class="login-page__accounts">
-            <el-button text @click="fillAccount('admin')">管理员</el-button>
-            <el-button text @click="fillAccount('teacher')">教师</el-button>
-            <el-button text @click="fillAccount('student')">学生</el-button>
-          </div>
-          <el-button class="w-full" type="primary" size="large" :loading="loading" @click="handleLogin">
-            登录系统
-          </el-button>
-        </el-form>
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @keyup.enter="handleLogin">
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="form.username" placeholder="请输入用户名" size="large" />
+        </el-form-item>
+        <el-form-item label="密码" prop="password">
+          <el-input v-model="form.password" show-password placeholder="请输入密码" size="large" />
+        </el-form-item>
+        <el-button class="w-full" type="primary" size="large" :loading="loading" @click="handleLogin">
+          登录
+        </el-button>
+      </el-form>
+      <div class="login-page__footer">
+        <span>还没有账号？</span>
+        <el-button text type="primary" @click="goRegister">注册</el-button>
       </div>
     </div>
   </div>
@@ -54,8 +40,8 @@ const userStore = useUserStore()
 const formRef = ref<FormInstance>()
 const loading = ref(false)
 const form = reactive({
-  username: 'admin',
-  password: 'Admin@123'
+  username: '',
+  password: ''
 })
 
 const rules: FormRules = {
@@ -82,9 +68,8 @@ async function handleLogin() {
   }
 }
 
-function fillAccount(username: string) {
-  form.username = username
-  form.password = 'Admin@123'
+function goRegister() {
+  router.push('/register')
 }
 </script>
 
@@ -94,87 +79,60 @@ function fillAccount(username: string) {
   min-height: 100vh;
   place-items: center;
   padding: 32px;
-}
-
-.login-page__panel {
-  display: grid;
-  width: min(1120px, 100%);
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 24px;
-  align-items: stretch;
-}
-
-.login-page__intro {
-  padding: 42px;
-  border-radius: 28px;
-  color: #fff;
   background:
-    linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(37, 99, 235, 0.88)),
-    radial-gradient(circle at top right, rgba(96, 165, 250, 0.35), transparent 28%);
-  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.22);
-}
-
-.login-page__badge {
-  display: inline-flex;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-  font-size: 12px;
-  letter-spacing: 0.12em;
-}
-
-.login-page__intro h1 {
-  margin: 20px 0 14px;
-  font-size: 42px;
-  line-height: 1.15;
-}
-
-.login-page__intro p {
-  margin: 0;
-  max-width: 520px;
-  line-height: 1.8;
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.login-page__tips {
-  display: grid;
-  gap: 12px;
-  margin-top: 32px;
+    radial-gradient(circle at 30% 20%, rgba(15, 108, 189, 0.08), transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.04), transparent 35%),
+    linear-gradient(180deg, #f7f9fc 0%, #f3f6f9 100%);
 }
 
 .login-page__card {
-  padding: 32px;
+  width: min(420px, 100%);
+  padding: 40px 36px 32px;
+  background: $app-surface-card;
+  border: 1px solid $app-border-subtle;
+  border-radius: $radius-2xl;
+  box-shadow: $shadow-lg;
 }
 
-.login-page__card-header {
-  margin-bottom: 20px;
-}
-
-.login-page__card-header h2 {
-  margin: 0;
-  font-size: 28px;
-}
-
-.login-page__card-header span {
-  display: block;
-  margin-top: 8px;
-  color: $app-sub-text-color;
-}
-
-.login-page__accounts {
+.login-page__brand {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-bottom: 12px;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 32px;
 }
 
-@media (max-width: 960px) {
-  .login-page__panel {
-    grid-template-columns: 1fr;
+.login-page__logo {
+  width: 42px;
+  height: 42px;
+  border-radius: $radius-lg;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.login-page__brand h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: $app-text-color;
+}
+
+.login-page__footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 16px;
+  color: $app-text-secondary;
+  font-size: 14px;
+}
+
+@media (max-width: 480px) {
+  .login-page {
+    padding: 16px;
   }
 
-  .login-page__intro {
-    order: 2;
+  .login-page__card {
+    padding: 32px 24px 24px;
   }
 }
 </style>

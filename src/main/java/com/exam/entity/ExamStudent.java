@@ -13,4 +13,5 @@ public class ExamStudent extends BaseEntity {
     private Long examId;
     private Long studentId;
     private String answerStatus;
+    private Integer switchCount;
 }

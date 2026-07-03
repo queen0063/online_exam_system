@@ -22,6 +22,7 @@ public class ExamVO {
     private LocalDateTime endTime;
     private Integer durationMinutes;
     private Integer passScore;
+    private Integer maxSwitchCount;
     private String status;
     private Integer resultPublished;
     private String answerStatus;

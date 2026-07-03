@@ -7,7 +7,11 @@
         <el-table-column prop="subjectiveScore" label="主观题" width="100" />
         <el-table-column prop="totalScore" label="总分" width="90" />
         <el-table-column prop="rankNo" label="排名" width="90" />
-        <el-table-column prop="scoreStatus" label="状态" width="120" />
+        <el-table-column label="状态" width="120">
+          <template #default="{ row }">
+            <status-tag :value="row.scoreStatus" :map="scoreStatusMap" />
+          </template>
+        </el-table-column>
         <el-table-column label="发布时间" min-width="180">
           <template #default="{ row }">{{ formatDateTime(row.publishTime) }}</template>
         </el-table-column>
@@ -33,9 +37,11 @@ import { useRouter } from 'vue-router'
 
 import { getMyScorePageApi } from '@/api/modules/score'
 import PageContainer from '@/components/common/PageContainer.vue'
+import StatusTag from '@/components/common/StatusTag.vue'
 import CommonPagination from '@/components/table/CommonPagination.vue'
 import CommonTable from '@/components/table/CommonTable.vue'
 import { usePagination } from '@/hooks/usePagination'
+import { SCORE_STATUS_OPTIONS } from '@/utils/dicts'
 import { formatDateTime } from '@/utils/format'
 import type { ScoreRecord } from '@/types'
 
@@ -43,6 +49,10 @@ const router = useRouter()
 const loading = ref(false)
 const tableData = ref<ScoreRecord[]>([])
 const { pagination, updatePagination } = usePagination()
+const scoreStatusMap = SCORE_STATUS_OPTIONS.reduce<Record<string, string>>((map, item) => {
+  map[item.value] = item.label
+  return map
+}, {})
 
 async function loadData() {
   loading.value = true

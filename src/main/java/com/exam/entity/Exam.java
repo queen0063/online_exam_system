@@ -19,6 +19,7 @@ public class Exam extends BaseEntity {
     private LocalDateTime endTime;
     private Integer durationMinutes;
     private Integer passScore;
+    private Integer maxSwitchCount;
     private String status;
     private Integer resultPublished;
 }

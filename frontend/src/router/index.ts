@@ -6,6 +6,7 @@ import { useUserStore } from '@/stores/user'
 import { staticRoutes, notFoundRoute } from './routes'
 
 const DEFAULT_AUTHED_PATH = '/dashboard'
+const PUBLIC_PATHS = ['/', '/login', '/register']
 
 const router = createRouter({
   history: createWebHistory(),
@@ -22,12 +23,12 @@ router.beforeEach(async (to, _from, next) => {
 
   document.title = `${to.meta.title || '在线考试系统'} - 在线考试系统`
 
-  if (hasToken && to.path === '/login') {
+  if (hasToken && PUBLIC_PATHS.includes(to.path)) {
     next({ path: DEFAULT_AUTHED_PATH, replace: true })
     return
   }
 
-  if (!hasToken && to.path !== '/login') {
+  if (!hasToken && !PUBLIC_PATHS.includes(to.path)) {
     next(`/login?redirect=${encodeURIComponent(to.fullPath)}`)
     return
   }
@@ -62,7 +63,7 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   const tabsStore = useTabsStore()
-  if (to.path !== '/login') {
+  if (!PUBLIC_PATHS.includes(to.path)) {
     tabsStore.addTab(to)
   }
 
